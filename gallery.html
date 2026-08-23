@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Galeria de Cartas — O Duelo dos Feiticeiros</title>
+<style>
+  :root {
+    --bg: #1c1a16;
+    --bg-panel: #262319;
+    --bg-item-hover: #35301f;
+    --border: #46402c;
+    --text: #ece4d2;
+    --text-muted: #a89d81;
+    --accent: #c9a24b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+  body { display: flex; flex-direction: column; }
+
+  header {
+    padding: 18px 28px 14px;
+    border-bottom: 1px solid var(--border);
+    flex: 0 0 auto;
+  }
+  header h1 { margin: 0 0 4px; font-size: 1.4rem; letter-spacing: 0.02em; }
+  header p { margin: 0; color: var(--text-muted); font-size: 0.85rem; }
+
+  main {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+  }
+
+  #lista {
+    width: 360px;
+    flex: 0 0 360px;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    padding: 8px 0 40px;
+  }
+  .grupo-titulo {
+    padding: 14px 20px 6px;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 20px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+  }
+  .item:hover, .item.ativo {
+    background: var(--bg-item-hover);
+    border-left-color: var(--accent);
+  }
+  .item img {
+    width: 34px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid #000;
+    flex: 0 0 auto;
+  }
+  .item .info { min-width: 0; }
+  .item .nome {
+    font-size: 0.92rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item .meta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  #preview {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    gap: 16px;
+  }
+  #preview img {
+    max-height: calc(100vh - 220px);
+    max-width: 100%;
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    transition: opacity 0.08s ease-out;
+  }
+  #preview-legenda {
+    text-align: center;
+  }
+  #preview-legenda .nome {
+    font-size: 1.3rem;
+    color: var(--accent);
+  }
+  #preview-legenda .meta {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  #preview-vazio {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>O Duelo dos Feiticeiros — Galeria de Cartas</h1>
+  <p>Passe o mouse sobre uma carta na lista para ver a imagem completa aqui do lado.</p>
+</header>
+
+<main>
+  <div id="lista"></div>
+  <div id="preview">
+    <div id="preview-vazio">Passe o mouse sobre uma carta →</div>
+    <img id="preview-img" style="display:none" alt="" />
+    <div id="preview-legenda" style="display:none">
+      <div class="nome" id="preview-nome"></div>
+      <div class="meta" id="preview-meta"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const CARTAS = [{"nome": "Aquiles", "arquivo": "cards/Aquiles.png", "tipo": "Herói", "elemento": "Vento", "custo": 2}, {"nome": "Atalanta", "arquivo": "cards/Atalanta.png", "tipo": "Herói", "elemento": "Vento", "custo": 2}, {"nome": "Beowulf", "arquivo": "cards/Beowulf.png", "tipo": "Herói", "elemento": "Terra", "custo": 2}, {"nome": "Cu Chulainn", "arquivo": "cards/Cu_Chulainn.png", "tipo": "Herói", "elemento": "Terra", "custo": 3}, {"nome": "Gilgamesh", "arquivo": "cards/Gilgamesh.png", "tipo": "Herói", "elemento": "Terra", "custo": 3}, {"nome": "Joana d'Arc", "arquivo": "cards/Joana_d'Arc.png", "tipo": "Herói", "elemento": "Fogo", "custo": 4}, {"nome": "Merlin", "arquivo": "cards/Merlin.png", "tipo": "Herói", "elemento": "Água", "custo": 1}, {"nome": "Odisseu", "arquivo": "cards/Odisseu.png", "tipo": "Herói", "elemento": "Água", "custo": 3}, {"nome": "Rei Arthur", "arquivo": "cards/Rei_Arthur.png", "tipo": "Herói", "elemento": "Vento", "custo": 3}, {"nome": "Sigurd", "arquivo": "cards/Sigurd.png", "tipo": "Herói", "elemento": "Vento", "custo": 3}, {"nome": "Cthulhu", "arquivo": "cards/Cthulhu.png", "tipo": "Monstro", "elemento": "Água", "custo": 4}, {"nome": "Fenrir", "arquivo": "cards/Fenrir.png", "tipo": "Monstro", "elemento": "Fogo", "custo": 3}, {"nome": "Jörmungandr", "arquivo": "cards/Jörmungandr.png", "tipo": "Monstro", "elemento": "Água", "custo": 3}, {"nome": "Minotauro", "arquivo": "cards/Minotauro.png", "tipo": "Monstro", "elemento": "Terra", "custo": 2}, {"nome": "Nyarlathotep", "arquivo": "cards/Nyarlathotep.png", "tipo": "Monstro", "elemento": "Água", "custo": 3}, {"nome": "Quimera", "arquivo": "cards/Quimera.png", "tipo": "Monstro", "elemento": "Fogo", "custo": 2}, {"nome": "Shoggoth", "arquivo": "cards/Shoggoth.png", "tipo": "Monstro", "elemento": "Terra", "custo": 2}, {"nome": "Surtur", "arquivo": "cards/Surtur.png", "tipo": "Monstro", "elemento": "Fogo", "custo": 5}, {"nome": "Tífon", "arquivo": "cards/Tífon.png", "tipo": "Monstro", "elemento": "Vento", "custo": 4}, {"nome": "Wendigo", "arquivo": "cards/Wendigo.png", "tipo": "Monstro", "elemento": "Vento", "custo": 2}, {"nome": "Cânion dos Ventos", "arquivo": "cards/Cânion_dos_Ventos.png", "tipo": "Domínio", "elemento": "Vento", "custo": 2}, {"nome": "Céus de Valíria", "arquivo": "cards/Céus_de_Valíria.png", "tipo": "Domínio", "elemento": "Fogo/Vento", "custo": 4}, {"nome": "Fenda de R'lyeh", "arquivo": "cards/Fenda_de_R'lyeh.png", "tipo": "Domínio", "elemento": null, "custo": 4}, {"nome": "Fosso de Tártaro", "arquivo": "cards/Fosso_de_Tártaro.png", "tipo": "Domínio", "elemento": "Terra", "custo": 3}, {"nome": "Jardins Suspensos", "arquivo": "cards/Jardins_Suspensos.png", "tipo": "Domínio", "elemento": "Terra", "custo": 3}, {"nome": "Oceano Primordial", "arquivo": "cards/Oceano_Primordial.png", "tipo": "Domínio", "elemento": "Água", "custo": 3}, {"nome": "Templo de Atlântida", "arquivo": "cards/Templo_de_Atlântida.png", "tipo": "Domínio", "elemento": "Água", "custo": 3}, {"nome": "Trono de Camelot", "arquivo": "cards/Trono_de_Camelot.png", "tipo": "Domínio", "elemento": null, "custo": 3}, {"nome": "Valhalla", "arquivo": "cards/Valhalla.png", "tipo": "Domínio", "elemento": null, "custo": 4}, {"nome": "Vulcão Primordial", "arquivo": "cards/Vulcão_Primordial.png", "tipo": "Domínio", "elemento": "Fogo", "custo": 3}, {"nome": "Apoio Incondicional", "arquivo": "cards/Apoio_Incondicional.png", "tipo": "Encantamento", "elemento": null, "custo": 3}, {"nome": "Bênção de Yggdrasil", "arquivo": "cards/Bênção_de_Yggdrasil.png", "tipo": "Encantamento", "elemento": null, "custo": 3}, {"nome": "Chamado do Além", "arquivo": "cards/Chamado_do_Além.png", "tipo": "Encantamento", "elemento": null, "custo": 3}, {"nome": "Clarividência Divina", "arquivo": "cards/Clarividência_Divina.png", "tipo": "Encantamento", "elemento": null, "custo": 2}, {"nome": "Desintegração de Realidade", "arquivo": "cards/Desintegração_de_Realidade.png", "tipo": "Encantamento", "elemento": null, "custo": 3}, {"nome": "Exílio Dimensional", "arquivo": "cards/Exílio_Dimensional.png", "tipo": "Encantamento", "elemento": null, "custo": 5}, {"nome": "Fúria Titânica", "arquivo": "cards/Fúria_Titânica.png", "tipo": "Encantamento", "elemento": null, "custo": 2}, {"nome": "Manto da Natureza", "arquivo": "cards/Manto_da_Natureza.png", "tipo": "Encantamento", "elemento": null, "custo": 2}, {"nome": "Pacto de Sangue", "arquivo": "cards/Pacto_de_Sangue.png", "tipo": "Encantamento", "elemento": null, "custo": 1}, {"nome": "Purificação Arcana", "arquivo": "cards/Purificação_Arcana.png", "tipo": "Encantamento", "elemento": null, "custo": 4}, {"nome": "Ressurreição Arcana", "arquivo": "cards/Ressurreição_Arcana.png", "tipo": "Encantamento", "elemento": null, "custo": 4}, {"nome": "Tomo do Oráculo", "arquivo": "cards/Tomo_do_Oráculo.png", "tipo": "Encantamento", "elemento": null, "custo": 2}, {"nome": "Transmutação Elemental", "arquivo": "cards/Transmutação_Elemental.png", "tipo": "Encantamento", "elemento": null, "custo": 2}, {"nome": "Troca Equivalente", "arquivo": "cards/Troca_Equivalente.png", "tipo": "Encantamento", "elemento": null, "custo": 1}, {"nome": "Visão do Olho Que Tudo Vê", "arquivo": "cards/Visão_do_Olho_Que_Tudo_Vê.png", "tipo": "Encantamento", "elemento": null, "custo": 3}, {"nome": "Vórtice Dimensional", "arquivo": "cards/Vórtice_Dimensional.png", "tipo": "Encantamento", "elemento": null, "custo": 4}, {"nome": "Amnésia Mágica", "arquivo": "cards/Amnésia_Mágica.png", "tipo": "Maldição", "elemento": null, "custo": 3}, {"nome": "Aperto da Múmia", "arquivo": "cards/Aperto_da_Múmia.png", "tipo": "Maldição", "elemento": null, "custo": 2}, {"nome": "Areias Movediças", "arquivo": "cards/Areias_Movediças.png", "tipo": "Maldição", "elemento": null, "custo": 2}, {"nome": "Barreira de Vento Cortante", "arquivo": "cards/Barreira_de_Vento_Cortante.png", "tipo": "Maldição", "elemento": null, "custo": 3}, {"nome": "Caixa de Pandora", "arquivo": "cards/Caixa_de_Pandora.png", "tipo": "Maldição", "elemento": null, "custo": 1}, {"nome": "Escudo de Gelo Absoluto", "arquivo": "cards/Escudo_de_Gelo_Absoluto.png", "tipo": "Maldição", "elemento": null, "custo": 3}, {"nome": "Espelho das Ilusões", "arquivo": "cards/Espelho_das_Ilusões.png", "tipo": "Maldição", "elemento": null, "custo": 4}, {"nome": "Fio do Destino Cortado", "arquivo": "cards/Fio_do_Destino_Cortado.png", "tipo": "Maldição", "elemento": null, "custo": 2}, {"nome": "Mente Fraturada", "arquivo": "cards/Mente_Fraturada.png", "tipo": "Maldição", "elemento": null, "custo": 2}, {"nome": "Nevoeiro do Pânico", "arquivo": "cards/Nevoeiro_do_Pânico.png", "tipo": "Maldição", "elemento": null, "custo": 3}, {"nome": "Praga da Ferrugem", "arquivo": "cards/Praga_da_Ferrugem.png", "tipo": "Maldição", "elemento": null, "custo": 1}, {"nome": "Rebote Arcano", "arquivo": "cards/Rebote_Arcano.png", "tipo": "Maldição", "elemento": null, "custo": 3}, {"nome": "Retribuição Kármica", "arquivo": "cards/Retribuição_Kármica.png", "tipo": "Maldição", "elemento": null, "custo": 4}, {"nome": "Roubo de Essência", "arquivo": "cards/Roubo_de_Essência.png", "tipo": "Maldição", "elemento": null, "custo": 3}, {"nome": "Vínculo Sombrio", "arquivo": "cards/Vínculo_Sombrio.png", "tipo": "Maldição", "elemento": null, "custo": 2}];
+
+  const lista = document.getElementById('lista');
+  const previewImg = document.getElementById('preview-img');
+  const previewVazio = document.getElementById('preview-vazio');
+  const previewLegenda = document.getElementById('preview-legenda');
+  const previewNome = document.getElementById('preview-nome');
+  const previewMeta = document.getElementById('preview-meta');
+
+  function metaTexto(carta) {
+    const partes = [carta.tipo];
+    if (carta.elemento) partes.push(carta.elemento);
+    partes.push(`Custo ${carta.custo}`);
+    return partes.join(' — ');
+  }
+
+  function mostrarPreview(carta, itemEl) {
+    previewImg.src = carta.arquivo;
+    previewImg.alt = carta.nome;
+    previewImg.style.display = 'block';
+    previewVazio.style.display = 'none';
+    previewLegenda.style.display = 'block';
+    previewNome.textContent = carta.nome;
+    previewMeta.textContent = metaTexto(carta);
+
+    document.querySelectorAll('.item.ativo').forEach(el => el.classList.remove('ativo'));
+    itemEl.classList.add('ativo');
+  }
+
+  let grupoAtual = null;
+  for (const carta of CARTAS) {
+    if (carta.tipo !== grupoAtual) {
+      grupoAtual = carta.tipo;
+      const titulo = document.createElement('div');
+      titulo.className = 'grupo-titulo';
+      titulo.textContent = grupoAtual;
+      lista.appendChild(titulo);
+    }
+
+    const item = document.createElement('div');
+    item.className = 'item';
+
+    const thumb = document.createElement('img');
+    thumb.src = carta.arquivo;
+    thumb.alt = '';
+    thumb.loading = 'lazy';
+
+    const info = document.createElement('div');
+    info.className = 'info';
+    const nomeEl = document.createElement('div');
+    nomeEl.className = 'nome';
+    nomeEl.textContent = carta.nome;
+    const metaEl = document.createElement('div');
+    metaEl.className = 'meta';
+    metaEl.textContent = metaTexto(carta);
+    info.append(nomeEl, metaEl);
+
+    item.append(thumb, info);
+    item.addEventListener('mouseenter', () => mostrarPreview(carta, item));
+    item.addEventListener('focus', () => mostrarPreview(carta, item));
+    item.tabIndex = 0;
+
+    lista.appendChild(item);
+  }
+</script>
+</body>
+</html>

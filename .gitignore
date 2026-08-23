@@ -1,0 +1,19 @@
+# ambiente Python (regenerável via requirements/pip)
+venv/
+__pycache__/
+*.pyc
+
+# segredos — nunca versionar
+.env
+
+# backups de edição manual da planilha de cartas (não são conteúdo "real")
+*.bak
+*.bak[0-9]*
+
+# config local do Claude Code (por máquina/usuário, não compartilhada)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# logs de scripts ad hoc
+scripts/*.log
+scripts/*.out

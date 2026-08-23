@@ -1,0 +1,236 @@
+/* Paleta e tokens no mesmo espírito de gallery.html/templates/card.css */
+:root {
+  --bg: #1c1a16;
+  --bg-panel: #262319;
+  --bg-slot: #302c22;
+  --border: #46402c;
+  --text: #ece4d2;
+  --text-muted: #a89d81;
+  --accent: #c9a24b;
+  --accent-2: #6fae9d;
+  --perigo: #d16a5a;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%;
+  background: var(--bg); color: var(--text);
+  font-family: Georgia, 'Times New Roman', serif;
+  overflow: hidden; /* a pagina inteira (mao + tabuleiro) precisa caber na tela, sem rolagem */
+}
+body { display: flex; flex-direction: column; height: 100vh; }
+
+header {
+  flex: 0 0 auto;
+  padding: 0.8vh 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;
+}
+header h1 { margin: 0; font-size: 1.15rem; }
+header .status { color: var(--text-muted); font-size: 0.85rem; }
+header .status b { color: var(--accent); }
+
+main {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  grid-template-rows: 1fr 1fr auto;
+  gap: 1vh 10px;
+  padding: 1vh 12px;
+  min-height: 0;
+}
+
+.tabuleiro {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0.6vh 14px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-height: 0;
+  /* position:relative sozinho NÃO cria stacking context — sem o z-index:0
+     aqui, o ::before com z-index:-1 (fundo do Domínio) escapa pra debaixo de
+     um ancestral qualquer em vez de ficar só atrás dos filhos DESTE elemento,
+     e some visualmente atrás do fundo escuro da página. */
+  position: relative; z-index: 0;
+}
+.tabuleiro.oponente { grid-column: 1; grid-row: 1; }
+.tabuleiro.jogador { grid-column: 1; grid-row: 2; }
+.mao-jogador { grid-column: 1; grid-row: 3; }
+
+/* Só pode haver 1 Domínio ativo por lado (jogar outro destrói o anterior —
+   TCG.acoes.jogarCartaDeCampo). Enquanto ativo, a arte dele vira o fundo do
+   campo INTEIRO dos dois lados do tabuleiro (TCG.dominioParaFundo) — não um
+   card num slot. A arte fica num ::before (não direto no .tabuleiro) pra dar
+   pra inverter só ela no lado do oponente sem virar o conteúdo real (cartas,
+   pilhas) de cabeça pra baixo junto; z-index negativo garante que ela fica
+   ATRÁS dos filhos normais do tabuleiro (ver truque de "camada de fundo" com
+   position:relative no pai + z-index:-1 no pseudo-elemento). O gradiente
+   escurece a arte pra manter as cartas por cima legíveis. */
+.tabuleiro.com-dominio::before {
+  content: "";
+  position: absolute; inset: 0; z-index: -1; border-radius: 10px;
+  background-image: linear-gradient(rgba(12,10,8,0.74), rgba(12,10,8,0.74)), var(--dominio-art);
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+}
+/* O tabuleiro do oponente é o lado "espelhado" da mesa (mesma ideia de
+   virar o combatente dele pra encarar o do jogador, ver .tabuleiro do
+   oponente/jogador em renderLado) — a arte do Domínio compartilhado também
+   aparece invertida ali, como se fosse vista do lado oposto da mesma cena. */
+.tabuleiro.oponente.com-dominio::before {
+  transform: scaleY(-1);
+}
+.dominio-tag {
+  position: absolute; top: 6px; left: 12px; z-index: 5;
+  background: rgba(15,13,10,0.85); color: var(--accent);
+  font-size: 0.7rem; padding: 3px 10px; border-radius: 6px;
+  border: 1px solid rgba(201,162,75,0.6);
+  cursor: pointer;
+}
+
+.tabuleiro-centro {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.6vh; min-width: 0;
+}
+
+/* Baralho/Panteão ficam à DIREITA (empilhados), Descarte à ESQUERDA — cada
+   um do mesmo tamanho de um slot normal, só virado pra baixo com o número
+   de cartas centralizado por cima. */
+.pilhas-laterais { display: flex; flex-direction: column; gap: 0.8vh; align-items: center; flex: 0 0 auto; }
+
+.linha-magia { display: flex; gap: 10px; }
+.linha-monstro { display: flex; gap: 16px; align-items: center; }
+
+.pilha { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.pilha-rotulo { font-size: 0.66rem; color: var(--text-muted); }
+
+/* Hover aumenta o card inteiro (moldura + arte juntas, sem cortar cantos) —
+   por isso o scale vai no .slot/.carta-mao, nao na <img> sozinha.
+   Tamanho em vh (com aspect-ratio pro resto vir sozinho) pra tudo — mão e
+   tabuleiro inteiros — encolher/crescer junto com a altura da janela e
+   sempre caber na tela sem precisar rolar. */
+.slot {
+  height: 11.5vh;
+  aspect-ratio: 5 / 7;
+  border-radius: 6px;
+  background: var(--bg-slot);
+  border: 1px solid #000;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.12s ease-out;
+  transform-origin: center bottom;
+  flex: 0 0 auto;
+}
+.slot img { width: 100%; height: 100%; object-fit: cover; }
+.slot.monstro { height: 15vh; }
+.slot.clicavel { cursor: pointer; box-shadow: 0 0 0 2px var(--accent) inset; }
+.slot.verso {
+  background: repeating-linear-gradient(45deg, #2c2418, #2c2418 6px, #3a3020 6px, #3a3020 12px);
+}
+.slot.verso:not(.clicavel) { cursor: default; }
+.slot:hover, .slot:focus-visible { transform: scale(1.45); z-index: 30; }
+
+.pilha-numero {
+  font-size: 1rem; font-weight: 700; color: var(--accent);
+  text-shadow: 0 1px 3px rgba(0,0,0,.8);
+}
+
+/* POW/RES sempre visível — os valores mudam com buffs/debuffs e a arte
+   impressa no PNG é estática, então isso é o único lugar confiável. */
+.stats-badge {
+  position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+  background: rgba(15,13,10,0.92); color: var(--accent);
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.01em;
+  padding: 2px 7px; border-radius: 5px; white-space: nowrap;
+  border: 1px solid rgba(201,162,75,0.55);
+  pointer-events: none;
+}
+
+.mao-oponente-info, .info-lado {
+  color: var(--text-muted); font-size: 0.8rem; text-align: center;
+}
+
+.mao-jogador {
+  display: flex; gap: 12px; justify-content: center; align-items: flex-end;
+  min-height: 0; padding-top: 2vh;
+}
+.mao-jogador .carta-mao {
+  height: 14vh; aspect-ratio: 5 / 7; border-radius: 6px; overflow: hidden; cursor: pointer;
+  border: 1px solid #000; transition: transform 0.12s ease-out; transform-origin: center bottom;
+  position: relative; flex: 0 0 auto;
+}
+.mao-jogador .carta-mao:hover, .mao-jogador .carta-mao:focus-visible { transform: scale(1.5); z-index: 30; }
+.mao-jogador .carta-mao img { width: 100%; height: 100%; object-fit: cover; }
+
+.painel-lateral {
+  grid-column: 2; grid-row: 1 / span 3;
+  display: flex; flex-direction: column; gap: 10px; min-height: 0;
+}
+
+#preview {
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  justify-content: center;
+  /* tamanho CONSTANTE em vh — proporcional só à altura da janela, nunca ao
+     que sobra depois de .controles/#log (senão o preview muda de tamanho
+     conforme o log enche). flex:0 0 auto pra nao entrar na divisao de
+     espaco flexivel; quem cede espaço quando falta altura é o #log (abaixo). */
+  flex: 0 0 auto; height: 58vh; overflow: hidden;
+}
+#preview img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.5); object-fit: contain; }
+#preview .vazio { color: var(--text-muted); font-size: 0.85rem; padding: 40px 0; }
+#preview .legenda { text-align: center; font-size: 0.85rem; }
+#preview .legenda .nome { color: var(--accent); font-size: 1rem; }
+#preview .legenda .meta { color: var(--text-muted); }
+
+/* Nunca encolhe: fim de turno/atacar tem que estar sempre visivel, acima
+   do preview (que e o elemento flexivel/que pode encolher no lugar dele). */
+.controles { display: flex; gap: 8px; flex-wrap: wrap; flex: 0 0 auto; }
+button.acao {
+  background: #453b20; color: var(--text); border: 1px solid var(--accent);
+  border-radius: 8px; padding: 8px 14px; font-family: inherit; cursor: pointer;
+}
+button.acao:hover { background: #574a28; }
+button.acao:disabled { opacity: 0.4; cursor: not-allowed; }
+
+#log {
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px; flex: 1 1 auto; overflow-y: auto; font-size: 0.78rem; min-height: 0;
+}
+#log div { padding: 2px 0; border-bottom: 1px dotted #3a352a; }
+
+/* Ocupam so a coluna do tabuleiro (grid-column 1, todas as linhas) — nunca
+   a coluna do painel de preview/log, pra dar pra ver a carta em destaque
+   enquanto escolhe. */
+#overlay-selecao, #overlay-fim, #overlay-descarte {
+  grid-column: 1; grid-row: 1 / -1;
+  background: rgba(0,0,0,0.82); border-radius: 10px;
+  display: none; align-items: center; justify-content: center; flex-direction: column; gap: 18px;
+  z-index: 40; padding: 24px;
+}
+#overlay-selecao.ativo, #overlay-fim.ativo, #overlay-descarte.ativo { display: flex; }
+#overlay-selecao .opcoes, #overlay-fim .resumo, #overlay-descarte .opcoes {
+  display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; max-width: 100%;
+}
+#overlay-descarte .opcoes { max-height: 70vh; overflow-y: auto; padding: 4px; }
+/* Cartas de modal (invocação/seleção/descarte) bem maiores que um slot comum
+   do tabuleiro — é a tela toda focada nessa escolha, não um card entre outros
+   no campo. Em vh, como o resto das cartas do jogo, pra continuar cabendo
+   na viewport (e crescer/encolher junto com ela) sem gerar rolagem. */
+#overlay-selecao .opcoes img, #overlay-descarte .opcoes img {
+  height: 26vh; width: auto; aspect-ratio: 5 / 7; border-radius: 8px; cursor: pointer; border: 2px solid var(--accent);
+  transition: transform 0.12s ease-out; transform-origin: center bottom;
+}
+#overlay-selecao .opcoes img:hover, #overlay-selecao .opcoes img:focus-visible,
+#overlay-descarte .opcoes img:hover, #overlay-descarte .opcoes img:focus-visible { transform: scale(1.5); z-index: 30; position: relative; }
+#overlay-fim h2 { color: var(--accent); font-size: 2rem; margin: 0; }
+#overlay-fim p { color: var(--text-muted); }
+
+.acao-invalida { color: var(--perigo); }

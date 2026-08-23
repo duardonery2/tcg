@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>O Duelo dos Feiticeiros</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header>
+  <h1>O Duelo dos Feiticeiros</h1>
+  <div class="status" id="status-turno"></div>
+</header>
+
+<main>
+  <section class="tabuleiro oponente" id="tabuleiro-oponente"></section>
+
+  <section class="tabuleiro jogador" id="tabuleiro-jogador"></section>
+
+  <div class="mao-jogador" id="mao-jogador"></div>
+
+  <aside class="painel-lateral">
+    <!-- Fim de turno/Atacar ficam SEMPRE acima do preview (primeiro no fluxo
+         em coluna), pra nunca ficarem inacessíveis atrás de uma imagem de
+         preview grande. -->
+    <div class="controles">
+      <button class="acao" id="btn-fase">Próxima Fase</button>
+      <button class="acao" id="btn-atacar" style="display:none">Atacar</button>
+    </div>
+    <div id="preview">
+      <div class="vazio" id="preview-vazio">Passe o mouse sobre uma carta</div>
+      <img id="preview-img" style="display:none" alt="" />
+      <div class="legenda" id="preview-legenda" style="display:none">
+        <div class="nome" id="preview-nome"></div>
+        <div class="meta" id="preview-meta"></div>
+      </div>
+    </div>
+    <div id="log"></div>
+  </aside>
+
+  <!-- Os overlays ficam DENTRO do grid, restritos a coluna do tabuleiro
+       (grid-column 1), pra nunca cobrir o painel de preview ao lado. -->
+  <div id="overlay-selecao">
+    <div id="selecao-prompt" style="font-size:1.1rem;color:var(--accent)"></div>
+    <div class="opcoes" id="selecao-opcoes"></div>
+  </div>
+
+  <div id="overlay-fim">
+    <h2 id="fim-titulo"></h2>
+    <p id="fim-motivo"></p>
+    <p id="fim-resumo"></p>
+    <button class="acao" id="btn-nova-partida">Nova Partida</button>
+  </div>
+
+  <div id="overlay-descarte">
+    <div id="descarte-titulo" style="font-size:1.1rem;color:var(--accent)"></div>
+    <div class="opcoes opcoes-rolavel" id="descarte-cartas"></div>
+    <button class="acao" id="btn-fechar-descarte">Fechar</button>
+  </div>
+</main>
+
+<script src="data.js"></script>
+<script src="events.js"></script>
+<script src="triggers.js"></script>
+<script src="deck.js"></script>
+<script src="board.js"></script>
+<script src="engine.js"></script>
+<script src="selection.js"></script>
+<script src="effects.js"></script>
+<script src="curses.js"></script>
+<script src="actions.js"></script>
+<script src="ai.js"></script>
+<script src="ui.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

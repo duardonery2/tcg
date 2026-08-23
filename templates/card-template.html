@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Card Frame Template</title>
+  <link rel="stylesheet" href="card.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 48px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      justify-content: center;
+      align-items: flex-start;
+      background: #2b2b2f;
+      font-family: system-ui, sans-serif;
+    }
+    figure {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    figcaption {
+      color: #cfcfd4;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    /* --- text overlay for the "filled" example only, kept out of card.css
+           so the reusable frame stays purely structural --- */
+    .card__bar-label {
+      margin: 0;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      padding: 0 5%;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-weight: 700;
+      color: #201a10;
+      white-space: nowrap;
+    }
+    .card__bar--name .card__bar-label { justify-content: space-between; }
+    .card__cost {
+      font-weight: 700;
+      color: #6b4b12;
+    }
+    .card__text-content {
+      box-sizing: border-box;
+      height: 100%;
+      padding: 6% 7%;
+      font-family: Georgia, 'Times New Roman', serif;
+      color: #2a241a;
+      font-size: 0.85em;
+      line-height: 1.4;
+    }
+    .card__stats {
+      margin-top: 8px;
+      font-weight: 700;
+      color: #5a4620;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. Blank frame, matching the reference template exactly -->
+  <figure>
+    <div class="card">
+      <div class="card__body">
+        <div class="card__bar"></div>
+        <div class="card__art"></div>
+        <div class="card__bar"></div>
+        <div class="card__text"></div>
+      </div>
+    </div>
+    <figcaption>Blank frame</figcaption>
+  </figure>
+
+  <!-- 2. Same frame, populated with a real card from the CSV -->
+  <figure>
+    <div class="card">
+      <div class="card__body">
+        <div class="card__bar card__bar--name">
+          <p class="card__bar-label">
+            <span>Rei Arthur</span>
+            <span class="card__cost">3</span>
+          </p>
+        </div>
+        <div class="card__art" style="background-image: url('../arts/Rei_Arthur_stability.png');"></div>
+        <div class="card__bar">
+          <p class="card__bar-label">Herói — Vento</p>
+        </div>
+        <div class="card__text">
+          <div class="card__text-content">
+            Excalibur: Ganha +4 de Combate neste turno.
+            <div class="card__stats">POW 18 &nbsp;|&nbsp; RES 16</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption>Filled example</figcaption>
+  </figure>
+
+</body>
+</html>

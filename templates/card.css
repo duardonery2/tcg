@@ -1,0 +1,153 @@
+/* ==========================================================================
+   Card frame — trading-card template
+   Black bevel border, tinted parchment body, two capsule bars
+   (name / type line), a white art window, and a fogged rules box.
+
+   Sizing: driven by --card-width on .card (default 400px).
+
+   Coloring: driven by four stops set as inline custom properties on .card —
+     --c1 (lightest) --c2 (mid) --c3 (dark) --c4 (accent / shadow)
+   Falls back to a neutral aged-parchment palette when they're not set
+   (used for Domínios and the blank reference frame).
+   ========================================================================== */
+
+.card {
+  /* ---- tokens -------------------------------------------------------- */
+  --card-width: 400px;
+  --border-black: #141210;
+  --frame-radius: calc(var(--card-width) * 0.07);   /* outer corner radius */
+  --bevel: calc(var(--card-width) * 0.035);          /* black border thickness */
+  --inner-radius: calc(var(--frame-radius) * 0.65);
+  --rule: calc(var(--card-width) * 0.005);           /* hairline stroke width */
+
+  --paper-white: #fdfdfb;
+
+  /* ---- box model ------------------------------------------------------ */
+  position: relative;
+  width: var(--card-width);
+  aspect-ratio: 5 / 7;
+  padding: var(--bevel);
+  box-sizing: border-box;
+  background: var(--border-black);
+  border-radius: var(--frame-radius);
+  box-shadow:
+    0 calc(var(--card-width) * 0.02) calc(var(--card-width) * 0.05) rgba(0, 0, 0, 0.4),
+    0 0 calc(var(--card-width) * 0.06) color-mix(in srgb, var(--c4, #8a734a) 45%, transparent);
+}
+
+.card__body {
+  position: relative;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--card-width) * 0.018);
+  padding: calc(var(--card-width) * 0.03);
+  border-radius: var(--inner-radius);
+  background: linear-gradient(
+    155deg,
+    var(--c1, #f7f2e6) 0%,
+    var(--c2, #efe8d8) 55%,
+    var(--c3, #ddceac) 100%
+  );
+}
+
+/* ---- capsule bars (name line / type line) -------------------------------- */
+
+.card__bar {
+  position: relative;
+  flex: 0 0 auto;
+  height: calc(var(--card-width) * 0.078);
+  box-sizing: border-box;
+  border: var(--rule) solid var(--border-black);
+  border-radius: 999px;
+  background:
+    radial-gradient(60% 140% at 20% 30%, color-mix(in srgb, var(--c3, #ddceac) 40%, transparent) 0%, transparent 60%),
+    radial-gradient(50% 140% at 80% 70%, color-mix(in srgb, var(--c3, #ddceac) 35%, transparent) 0%, transparent 65%),
+    linear-gradient(180deg, var(--c1, #f7f2e6) 0%, var(--c2, #efe8d8) 100%);
+  box-shadow:
+    inset 0 calc(var(--card-width) * -0.008) 0 color-mix(in srgb, var(--c3, #ddceac) 55%, transparent),
+    inset 0 calc(var(--card-width) * 0.004) 0 rgba(255, 255, 255, 0.35);
+}
+
+/* ---- mana-cost badge: dark grey gem overlapping the name bar ------------- */
+
+.card__cost-badge {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--card-width) * 0.015);
+  transform: translateY(-50%);
+  width: calc(var(--card-width) * 0.105);
+  height: calc(var(--card-width) * 0.105);
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 35% 28%, #7a7a7e 0%, #47474b 45%, #232326 85%);
+  border: var(--rule) solid #0c0c0d;
+  box-shadow:
+    0 calc(var(--card-width) * 0.01) calc(var(--card-width) * 0.018) rgba(0, 0, 0, 0.55),
+    inset 0 calc(var(--card-width) * 0.004) 0 rgba(255, 255, 255, 0.25),
+    inset 0 calc(var(--card-width) * -0.006) calc(var(--card-width) * 0.01) rgba(0, 0, 0, 0.45);
+}
+
+/* ---- ability-activation cost: same dark-grey gem, rotated into a diamond -- */
+
+.card__ability-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: calc(var(--card-width) * 0.058);
+  height: calc(var(--card-width) * 0.058);
+  margin-right: calc(var(--card-width) * 0.028);
+  transform: rotate(45deg);
+  background: radial-gradient(circle at 35% 28%, #7a7a7e 0%, #47474b 45%, #232326 85%);
+  border: var(--rule) solid #0c0c0d;
+  box-shadow:
+    0 calc(var(--card-width) * 0.006) calc(var(--card-width) * 0.01) rgba(0, 0, 0, 0.5),
+    inset 0 calc(var(--card-width) * 0.003) 0 rgba(255, 255, 255, 0.25),
+    inset 0 calc(var(--card-width) * -0.004) calc(var(--card-width) * 0.006) rgba(0, 0, 0, 0.45);
+}
+
+.card__ability-badge-num {
+  transform: rotate(-45deg);
+  color: #f1efe6;
+  font-weight: 700;
+  font-size: calc(var(--card-width) * 0.034);
+  line-height: 1;
+}
+
+/* ---- art window ------------------------------------------------------ */
+
+.card__art {
+  flex: 1 1 auto;
+  min-height: 0;
+  box-sizing: border-box;
+  border: var(--rule) solid var(--border-black);
+  border-radius: calc(var(--card-width) * 0.005);
+  background-color: var(--paper-white);
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  box-shadow: inset 0 0 calc(var(--card-width) * 0.03) color-mix(in srgb, var(--c3, #ddceac) 35%, transparent);
+}
+
+/* ---- rules / text box -------------------------------------------------- */
+
+.card__text {
+  flex: 0 0 26%;
+  box-sizing: border-box;
+  border: var(--rule) solid var(--border-black);
+  border-radius: calc(var(--card-width) * 0.005);
+  background:
+    radial-gradient(70% 120% at 25% 15%, color-mix(in srgb, var(--c1, #f7f2e6) 75%, white) 0%, transparent 55%),
+    radial-gradient(70% 120% at 75% 85%, color-mix(in srgb, var(--c1, #f7f2e6) 75%, white) 0%, transparent 55%),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--c1, #f7f2e6) 55%, white 45%),
+      color-mix(in srgb, var(--c2, #efe8d8) 30%, white 70%)
+    );
+}
