@@ -67,8 +67,14 @@ TCG.removerPassivosDe = function removerPassivosDe(game, carta) {
 };
 
 TCG.aplicarPassivos = function aplicarPassivos(game) {
+  // limpa-e-reaplica roda em TODA Fase Tática, mesmo quando nada mudou —
+  // suprime o evento "statusAlterado" (ver TCG.buff, effects.js) durante
+  // esse ciclo pra não piscar um flash de UI toda vez sem nenhuma mudança
+  // visível de verdade.
+  game._reaplicandoPassivos = true;
   for (const p of game.passivos) {
     p.limpar(game, p.carta);
     p.aplicar(game, p.playerId, p.carta);
   }
+  game._reaplicandoPassivos = false;
 };

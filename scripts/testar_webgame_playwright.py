@@ -1062,6 +1062,98 @@ def testar_partida_completa(browser, seeds=(1, 2, 3)):
         print(f"OK  partida completa (seed={seed}): {estado_final['fimDeJogo']} no turno {estado_final['turno']}")
 
 
+def testar_fx_summon_voa_e_limpa_sozinho(browser):
+    """Invocar um Combatente dispara um "fx-ghost" (Panteão -> slot de
+    Monstro) dentro de #fx-layer, e o elemento se limpa sozinho depois."""
+    page = browser.new_page(viewport={"width": 1400, "height": 900})
+    erros = []
+    page.on("pageerror", lambda e: erros.append(str(e)))
+    page.on("console", lambda m: erros.append(m.text) if m.type == "error" else None)
+    page.goto(INDEX)
+    page.wait_for_timeout(200)
+
+    antes = page.eval_on_selector_all("#fx-layer > *", "els => els.length")
+    imgs = page.query_selector_all("#selecao-opcoes img")
+    imgs[0].click()
+    page.wait_for_timeout(60)
+    logo_apos = page.eval_on_selector_all("#fx-layer > *", "els => els.length")
+    page.wait_for_timeout(600)  # janela generosa: maior duracao+atraso usados é bem menor que isso
+    depois = page.eval_on_selector_all("#fx-layer > *", "els => els.length")
+
+    assert antes == 0, f"#fx-layer já tinha elemento(s) antes de qualquer ação: {antes}"
+    assert logo_apos >= 1, "invocar deveria ter criado pelo menos um elemento de animação"
+    assert depois == 0, f"#fx-layer deveria ter se limpado sozinho, sobrou {depois} elemento(s)"
+    assert not erros, f"erros no console: {erros}"
+    page.close()
+    print("OK  animação de invocação (fx-ghost) aparece em #fx-layer e se limpa sozinha")
+
+
+def testar_fx_statusAlterado_nao_dispara_ao_reaplicar_passivo_sem_mudanca(browser):
+    """TCG.aplicarPassivos roda em TODA Fase Tática mesmo sem nada mudar —
+    o evento genérico "statusAlterado" (usado pra animar buffs) não pode
+    disparar de novo nesse caso, só na primeira aplicação real."""
+    page = browser.new_page(viewport={"width": 1400, "height": 900})
+    erros = []
+    page.on("pageerror", lambda e: erros.append(str(e)))
+    page.on("console", lambda m: erros.append(m.text) if m.type == "error" else None)
+    page.goto(INDEX + "?seed=42")
+    page.wait_for_timeout(200)
+    fechar_modal_se_aberto(page, escolher=False)
+
+    r = page.evaluate("""() => {
+        const g = window.game;
+        g.jogadorDaVez = 1; g.fase = 'TATICA'; g.players[1].mana = 99;
+        const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
+        const dominio = acharCarta('Trono de Camelot');
+        const heroi = acharCarta('Rei Arthur');
+        g.board[1].monstro = heroi;
+        g.players[1].mao = [dominio];
+
+        const disparos = [];
+        g.bus.on('statusAlterado', (e) => disparos.push(e.delta));
+
+        TCG.acoes.jogarCartaDeCampo(g, 1, dominio); // ativação real -> 1 disparo (+3)
+        const aposAtivar = disparos.length;
+        TCG.aplicarPassivos(g); // simula reentrar na Fase Tática sem nada mudar -> 0 disparos a mais
+        TCG.aplicarPassivos(g);
+        const aposReaplicar = disparos.length;
+        return { disparos, aposAtivar, aposReaplicar };
+    }""")
+    print("resultado:", r)
+    assert r["aposAtivar"] == 1 and r["disparos"][0] == 3, \
+        f"a ativação real deveria disparar statusAlterado(+3) exatamente uma vez: {r}"
+    assert r["aposReaplicar"] == r["aposAtivar"], \
+        f"reaplicar o passivo sem mudança nenhuma não deveria disparar statusAlterado de novo: {r}"
+    assert not erros, f"erros no console: {erros}"
+    page.close()
+    print("OK  statusAlterado dispara só na mudança real, não no limpa-e-reaplica de rotina do passivo")
+
+
+def testar_fx_nao_deixa_no_ao_longo_de_partida_completa(browser):
+    """Roda uma partida inteira (o mesmo driver de testar_partida_completa)
+    e confirma que #fx-layer não vazou nenhum nó ao longo do caminho —
+    a regressão clássica de uma camada de animação paralela ao render()."""
+    page = browser.new_page(viewport={"width": 1400, "height": 900})
+    erros = []
+    page.on("pageerror", lambda e: erros.append(str(e)))
+    page.on("console", lambda m: erros.append(m.text) if m.type == "error" else None)
+    page.goto(INDEX + "?seed=2")
+    page.wait_for_timeout(150)
+
+    estado_final = jogar_ate_o_fim(page)
+    # espera folgada: um turno de IA agitado pode escalonar vários eventos até
+    # o teto de atraso (480ms, ver proximoAtraso em ui.js) + a duração do
+    # efeito mais longo (fx-num, 700ms) + a margem de segurança do fallback.
+    page.wait_for_timeout(1500)
+    sobrando = page.eval_on_selector_all("#fx-layer > *", "els => els.length")
+
+    assert estado_final["fimDeJogo"], f"partida nao terminou: {estado_final}"
+    assert sobrando == 0, f"#fx-layer vazou {sobrando} nó(s) depois de uma partida inteira"
+    assert not erros, f"erros no console: {erros}"
+    page.close()
+    print(f"OK  #fx-layer não vaza nós numa partida completa (seed=2, {estado_final['turno']} turnos)")
+
+
 def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -1083,6 +1175,9 @@ def main():
         testar_turno_da_ia_para_de_verdade_para_decisao_de_maldicao(browser)
         testar_maldicao_reativa_em_evento_nao_ataque(browser)
         testar_ia_nao_revela_propria_maldicao_no_proprio_turno(browser)
+        testar_fx_summon_voa_e_limpa_sozinho(browser)
+        testar_fx_statusAlterado_nao_dispara_ao_reaplicar_passivo_sem_mudanca(browser)
+        testar_fx_nao_deixa_no_ao_longo_de_partida_completa(browser)
         testar_partida_completa(browser)
         browser.close()
     print("\nTODOS OS TESTES PASSARAM")

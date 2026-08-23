@@ -14,8 +14,20 @@ TCG.EFFECTS_ON_DESTROY = {};
 // ---- primitivas -----------------------------------------------------
 
 TCG.buff = function buff(game, carta, atributo, magnitude, duracao = "PERMANENTE", origem = "") {
+  const campo = atributo === "pow" ? "atualPow" : "atualRes";
+  const antes = carta[campo];
   carta.statusEffects.push({ atributo, magnitude, duracao, origem });
   TCG.recalcularStats(carta);
+  // "statusAlterado": sinal genérico pra UI animar um alvo específico sem
+  // precisar saber qual efeito de carta causou (a maioria buffa um alvo
+  // DIFERENTE da carta nomeada no evento que disparou, ex.: Pacto de
+  // Sangue nomeia o próprio Encantamento, não o combatente buffado).
+  // Suprimido durante TCG.aplicarPassivos (ver triggers.js) — senão TODO
+  // Domínio passivo piscaria a cada Fase Tática, mesmo sem nada mudar.
+  if (!game._reaplicandoPassivos) {
+    const delta = carta[campo] - antes;
+    if (delta !== 0) game.bus.emit("statusAlterado", { carta, atributo, delta, origem });
+  }
 };
 
 TCG.curar = function curar(game, carta, quantidade) {
@@ -23,7 +35,10 @@ TCG.curar = function curar(game, carta, quantidade) {
   // Cura nao passa da Resistencia base (nao "sobre-cura" acima do impresso),
   // mas tambem nunca REDUZ o valor atual — se um buff ja tiver deixado a
   // Resistencia acima da base, curar nao pode derrubar isso de volta.
+  const antes = carta.atualRes;
   carta.atualRes = Math.max(carta.atualRes, Math.min(carta.atualRes + quantidade, carta.resistencia));
+  const delta = carta.atualRes - antes;
+  if (delta > 0) game.bus.emit("statusAlterado", { carta, atributo: "res", delta, origem: "cura" });
 };
 
 TCG.danoCombatente = function danoCombatente(game, carta, quantidade, origem = "") {

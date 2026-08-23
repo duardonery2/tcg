@@ -9,6 +9,11 @@
   --accent: #c9a24b;
   --accent-2: #6fae9d;
   --perigo: #d16a5a;
+  /* aliases semânticos pras animações (fx-layer, no fim deste arquivo) —
+     reaproveita a mesma paleta, não inventa cores novas */
+  --fx-dano: var(--perigo);
+  --fx-cura: var(--accent-2);
+  --fx-destaque: var(--accent);
 }
 
 * { box-sizing: border-box; }
@@ -234,3 +239,91 @@ button.acao:disabled { opacity: 0.4; cursor: not-allowed; }
 #overlay-fim p { color: var(--text-muted); }
 
 .acao-invalida { color: var(--perigo); }
+
+/* ---- animações (ver ui.js, secao "FX") ---------------------------------
+   Duas famílias:
+   - "em-lugar": classes aplicadas DIRETO num .slot/.carta-mao que já está
+     no layout normal (achado via WeakMap em ui.js) — não usam
+     position:fixed, só reagem em cima da posição onde o elemento já está.
+   - "camada" (#fx-layer): elementos soltos, position:fixed, injetados e
+     removidos por ui.js num container que o render() nunca toca — usados
+     quando o alvo está saindo de campo (voa até outra pilha) ou já não
+     existe mais no DOM da vez seguinte (destruição).
+   `--fx-cor` (custom prop setada por instância) escolhe a cor; default
+   --fx-destaque. `--fx-atraso` escalona uma sequência de eventos de UMA
+   mesma ação (ver TCG.proximoAtraso em ui.js) pra não animar tudo junto. */
+
+#fx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 100; overflow: hidden; }
+
+/* -- em-lugar ------------------------------------------------------- */
+
+.fx-pulso {
+  animation: fx-pulso 320ms ease-out both;
+  animation-delay: var(--fx-atraso, 0ms);
+}
+@keyframes fx-pulso {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--fx-cor, var(--fx-destaque)) 70%, transparent); }
+  40%  { box-shadow: 0 0 0 6px color-mix(in srgb, var(--fx-cor, var(--fx-destaque)) 55%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.fx-shake {
+  animation: fx-shake 260ms ease-in-out both;
+  animation-delay: var(--fx-atraso, 0ms);
+}
+@keyframes fx-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
+/* -- camada (#fx-layer) ---------------------------------------------- */
+
+.fx-ghost {
+  position: fixed;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  animation: fx-fly var(--fx-duracao, 380ms) ease-out both;
+  animation-delay: var(--fx-atraso, 0ms);
+}
+@keyframes fx-fly {
+  from { left: var(--x0); top: var(--y0); width: var(--w0); height: var(--h0); opacity: 0.95; }
+  to   { left: var(--x1); top: var(--y1); width: var(--w1); height: var(--h1); opacity: 0.1; }
+}
+
+.fx-num {
+  position: fixed;
+  transform: translate(-50%, 0);
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--fx-cor, var(--fx-destaque));
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  white-space: nowrap;
+  animation: fx-float-num 700ms ease-out both;
+  animation-delay: var(--fx-atraso, 0ms);
+}
+@keyframes fx-float-num {
+  0%   { transform: translate(-50%, 0); opacity: 0; }
+  15%  { opacity: 1; }
+  100% { transform: translate(-50%, -34px); opacity: 0; }
+}
+
+.fx-anel {
+  position: fixed;
+  border-radius: 10px;
+  border: 3px solid var(--fx-cor, var(--fx-dano));
+  animation: fx-anel 420ms ease-out both;
+  animation-delay: var(--fx-atraso, 0ms);
+}
+@keyframes fx-anel {
+  0%   { opacity: 0.9; transform: scale(0.9); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-pulso, .fx-shake, .fx-ghost, .fx-num, .fx-anel { animation: none !important; }
+  #fx-layer { display: none; }
+}

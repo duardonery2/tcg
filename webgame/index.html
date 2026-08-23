@@ -57,6 +57,10 @@
     <div class="opcoes opcoes-rolavel" id="descarte-cartas"></div>
     <button class="acao" id="btn-fechar-descarte">Fechar</button>
   </div>
+  <!-- camada de animações: nunca tocada pelo render() (que refaz o tabuleiro
+       inteiro do zero a cada ação) — ui.js injeta e remove elementos aqui,
+       desacoplado do ciclo de re-render. -->
+  <div id="fx-layer" aria-hidden="true"></div>
 </main>
 
 <script src="data.js"></script>

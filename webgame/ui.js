@@ -16,6 +16,18 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   const logEl = el("log");
   const overlaySelecao = el("overlay-selecao");
   const overlayFim = el("overlay-fim");
+  const fxLayer = el("fx-layer");
+
+  // Carta (objeto) -> DOM do slot/carta-mão que a representa AGORA MESMO.
+  // Populado em elSlot()/renderMao() a cada render(); como é WeakMap, uma
+  // carta que sai de campo/mão simplesmente some do mapa sozinha (não
+  // precisa limpar manualmente). O pulo: um evento do bus dispara ANTES do
+  // próximo render() (tentar() só chama render() no finally, depois que a
+  // ação inteira — incluindo qualquer pausa por Maldição reativa — resolve),
+  // então nesse instante o mapa ainda reflete o render ANTERIOR, com a
+  // posição de tela onde a carta estava até agora — exatamente o que uma
+  // animação de "saindo daqui" precisa.
+  const elCartaAtual = new WeakMap();
 
   // O preview de uma carta com imagem mostra SÓ a imagem — nome, custo,
   // tipo/elemento ja estao todos impressos nela; POW/RES atual (o único
@@ -59,6 +71,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   }
 
   function tentar(fn) {
+    staggerFx = 0; // cada acao do jogador/IA e sua propria sequencia de animacao
     try {
       fn();
     } catch (e) {
@@ -82,6 +95,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
       // preenchido quando ehLocal). A arte no tabuleiro continua virada pra
       // baixo pros dois lados; só o preview de hover muda pro dono.
       comHoverPreview(div, cartaPreview, textoVerso);
+      if (cartaPreview) elCartaAtual.set(cartaPreview, div);
     } else if (carta) {
       const img = document.createElement("img");
       img.src = carta.arquivo;
@@ -89,6 +103,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
       if (onClick) { div.classList.add("clicavel"); img.addEventListener("click", onClick); }
       comHoverPreview(img, carta);
       div.appendChild(img);
+      elCartaAtual.set(carta, div);
       if (carta.combate !== null) {
         // POW/RES *atuais* (com buffs/debuffs já aplicados) — a arte impressa
         // no PNG é estática, então isso é o único lugar que sempre mostra o
@@ -113,9 +128,10 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // centralizado por cima. Só o Descarte é clicável — é informação pública
   // e abre num modal de leitura; Baralho/Panteão são só a contagem.
 
-  function elPilha(rotulo, quantidade, onClick) {
+  function elPilha(rotulo, quantidade, onClick, chave = "") {
     const wrap = document.createElement("div");
     wrap.className = "pilha";
+    if (chave) wrap.dataset.pilha = chave; // landmark p/ animacoes (ver rectPilha)
 
     const slot = document.createElement("div");
     slot.className = "slot verso pilha-slot" + (onClick ? " clicavel" : "");
@@ -184,7 +200,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
 
     const pilhaEsquerda = document.createElement("div");
     pilhaEsquerda.className = "pilhas-laterais";
-    pilhaEsquerda.appendChild(elPilha("Descarte", game.descarte[playerId].length, () => mostrarDescarte(playerId)));
+    pilhaEsquerda.appendChild(elPilha("Descarte", game.descarte[playerId].length, () => mostrarDescarte(playerId), "descarte"));
 
     const centro = document.createElement("div");
     centro.className = "tabuleiro-centro";
@@ -237,8 +253,8 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
 
     const pilhaDireita = document.createElement("div");
     pilhaDireita.className = "pilhas-laterais";
-    pilhaDireita.appendChild(elPilha("Baralho", TCG.Deck.restantes(game.baralhos[playerId]).length));
-    pilhaDireita.appendChild(elPilha("Panteão", TCG.Deck.restantes(game.panteoes[playerId]).length));
+    pilhaDireita.appendChild(elPilha("Baralho", TCG.Deck.restantes(game.baralhos[playerId]).length, null, "baralho"));
+    pilhaDireita.appendChild(elPilha("Panteão", TCG.Deck.restantes(game.panteoes[playerId]).length, null, "panteao"));
 
     container.appendChild(pilhaEsquerda);
     container.appendChild(centro);
@@ -298,6 +314,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
       img.alt = carta.nome;
       div.appendChild(img);
       comHoverPreview(div, carta);
+      elCartaAtual.set(carta, div);
       if (jogavel && ["Domínio", "Encantamento", "Maldição"].includes(carta.tipo)) {
         div.addEventListener("click", () => tentar(() => TCG.acoes.jogarCartaDeCampo(game, jogadorLocal, carta)));
       }
@@ -377,6 +394,239 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
       overlaySelecao.appendChild(btnPular);
     }
   }
+
+  // ---- FX: animações --------------------------------------------------
+  //
+  // Camada CSS-only por cima do render() de sempre (que continua refazendo
+  // o tabuleiro do zero a cada ação) — ver style.css, seção "animações", e
+  // o comentário de elCartaAtual acima. Duas famílias de efeito:
+  //   - "em lugar" (fxPulso/fxShake): mexe direto num elemento que já está
+  //     no layout normal (achado via elCartaAtual ou uma landmark fixa como
+  //     a linha de magia) — usado quando o alvo continua onde está.
+  //   - "de camada" (fxSpawnGhost/fxSpawnNumero/fxSpawnAnel): cria um
+  //     elemento position:fixed dentro de #fx-layer, usado quando o alvo
+  //     está mudando de zona (voa de uma pilha pra outra) ou pode já não
+  //     existir mais na próxima renderização (destruição).
+  // `staggerFx`/`proximoAtraso()` escalonam os vários eventos de UMA MESMA
+  // ação (zerado a cada `tentar()`) pra tocar em sequência, não tudo junto.
+
+  let staggerFx = 0;
+  function proximoAtraso(passo = 90, cap = 480) {
+    const atual = Math.min(staggerFx, cap);
+    staggerFx += passo;
+    return atual;
+  }
+
+  function containerIdDe(playerId) {
+    return playerId === jogadorLocal ? "tabuleiro-jogador" : "tabuleiro-oponente";
+  }
+  function rectDe(seletor) {
+    const elemento = document.querySelector(seletor);
+    return elemento ? elemento.getBoundingClientRect() : null;
+  }
+  function rectPilha(playerId, chave) { return rectDe(`#${containerIdDe(playerId)} [data-pilha="${chave}"] .slot`); }
+  function rectMonstro(playerId) { return rectDe(`#${containerIdDe(playerId)} .linha-monstro .slot`); }
+  function rectLinhaMagia(playerId) { return rectDe(`#${containerIdDe(playerId)} .linha-magia`); }
+  function rectInfoLado(playerId) { return rectDe(`#${containerIdDe(playerId)} .info-lado`); }
+  function rectMaoLocal() { return rectDe("#mao-jogador"); }
+
+  function fxRemoverDepois(elemento, vidaMs) {
+    let removido = false;
+    const remover = () => {
+      if (removido) return;
+      removido = true;
+      elemento.remove();
+    };
+    elemento.addEventListener("animationend", remover);
+    elemento.addEventListener("transitionend", remover);
+    setTimeout(remover, vidaMs + 80); // salvaguarda: nunca deixa um nó vazado se o evento de fim não disparar
+  }
+
+  function corDe(tipo) {
+    return tipo === "dano" ? "var(--fx-dano)" : tipo === "cura" ? "var(--fx-cura)" : "var(--fx-destaque)";
+  }
+
+  // "em lugar": pulso/aviso num elemento que já está no layout normal.
+  function fxPulso(elemento, tipo, delayMs) {
+    if (!elemento) return;
+    elemento.style.setProperty("--fx-cor", corDe(tipo));
+    elemento.style.setProperty("--fx-atraso", `${delayMs}ms`);
+    elemento.classList.add("fx-pulso");
+    const limpar = () => elemento.classList.remove("fx-pulso");
+    elemento.addEventListener("animationend", limpar, { once: true });
+    setTimeout(limpar, delayMs + 400);
+  }
+  function fxShake(elemento, delayMs) {
+    if (!elemento) return;
+    elemento.style.setProperty("--fx-atraso", `${delayMs}ms`);
+    elemento.classList.add("fx-shake");
+    const limpar = () => elemento.classList.remove("fx-shake");
+    elemento.addEventListener("animationend", limpar, { once: true });
+    setTimeout(limpar, delayMs + 320);
+  }
+
+  // "de camada": elementos soltos dentro de #fx-layer.
+  function fxSpawnGhost(rectOrigem, rectDestino, imgSrc, delayMs, duracaoMs = 380) {
+    if (!rectOrigem || !rectDestino || !imgSrc) return;
+    const img = document.createElement("img");
+    img.className = "fx-ghost";
+    img.src = imgSrc;
+    img.style.setProperty("--x0", `${rectOrigem.left}px`);
+    img.style.setProperty("--y0", `${rectOrigem.top}px`);
+    img.style.setProperty("--w0", `${rectOrigem.width}px`);
+    img.style.setProperty("--h0", `${rectOrigem.height}px`);
+    img.style.setProperty("--x1", `${rectDestino.left}px`);
+    img.style.setProperty("--y1", `${rectDestino.top}px`);
+    img.style.setProperty("--w1", `${rectDestino.width}px`);
+    img.style.setProperty("--h1", `${rectDestino.height}px`);
+    img.style.setProperty("--fx-atraso", `${delayMs}ms`);
+    img.style.setProperty("--fx-duracao", `${duracaoMs}ms`);
+    fxLayer.appendChild(img);
+    fxRemoverDepois(img, delayMs + duracaoMs);
+  }
+  function fxSpawnNumero(rect, texto, tipo, delayMs) {
+    if (!rect) return;
+    const div = document.createElement("div");
+    div.className = "fx-num";
+    div.textContent = texto;
+    div.style.left = `${rect.left + rect.width / 2}px`;
+    div.style.top = `${rect.top + rect.height * 0.25}px`;
+    div.style.setProperty("--fx-cor", corDe(tipo));
+    div.style.setProperty("--fx-atraso", `${delayMs}ms`);
+    fxLayer.appendChild(div);
+    fxRemoverDepois(div, delayMs + 700);
+  }
+  function fxSpawnAnel(rect, tipo, delayMs) {
+    if (!rect) return;
+    const div = document.createElement("div");
+    div.className = "fx-anel";
+    div.style.left = `${rect.left}px`;
+    div.style.top = `${rect.top}px`;
+    div.style.width = `${rect.width}px`;
+    div.style.height = `${rect.height}px`;
+    div.style.setProperty("--fx-cor", corDe(tipo));
+    div.style.setProperty("--fx-atraso", `${delayMs}ms`);
+    fxLayer.appendChild(div);
+    fxRemoverDepois(div, delayMs + 420);
+  }
+
+  // combatenteInvocado: voa do Panteão até o slot de Monstro — o slot já
+  // existe vazio no esqueleto do tabuleiro, não precisa esperar o próximo render.
+  game.bus.on("combatenteInvocado", (e) => {
+    fxSpawnGhost(rectPilha(e.playerId, "panteao"), rectMonstro(e.playerId), e.carta.arquivo, proximoAtraso());
+  });
+
+  // cartaComprada: só voa até a mão pro jogador LOCAL (a mão do oponente não
+  // tem slots por carta pra mirar) — do lado do oponente, só um pulso na
+  // pilha do Baralho dele.
+  game.bus.on("cartaComprada", (e) => {
+    const delay = proximoAtraso(60);
+    if (e.playerId === jogadorLocal) fxSpawnGhost(rectPilha(e.playerId, "baralho"), rectMaoLocal(), e.carta.arquivo, delay, 340);
+    else fxPulso(document.querySelector(`#${containerIdDe(e.playerId)} [data-pilha="baralho"] .slot`), "destaque", delay);
+  });
+
+  // cartaDescartada: de onde a carta estava (mão ou campo, via elCartaAtual)
+  // até a pilha de Descarte.
+  game.bus.on("cartaDescartada", (e) => {
+    const delay = proximoAtraso();
+    const elemento = elCartaAtual.get(e.carta);
+    const origem = elemento ? elemento.getBoundingClientRect()
+      : (e.playerId === jogadorLocal ? rectMaoLocal() : rectLinhaMagia(e.playerId));
+    fxSpawnGhost(origem, rectPilha(e.playerId, "descarte"), e.carta.arquivo, delay);
+  });
+
+  // cartaSeraDestruida + cartaDestruida: sempre disparam em sequência pra
+  // MESMA carta (ver DestructionSystem/TCG.destroyCard) — um único passo de
+  // stagger pras duas, não dois: primeiro um anel no lugar onde ela está
+  // (ainda visível nesse instante), depois o voo até o Descarte (ou
+  // Panteão, se Valhalla redirecionou — não dá pra saber aqui sem o
+  // contexto, então sempre mira o Descarte; a contagem da pilha real só
+  // aparece no próximo render de qualquer forma).
+  let atrasoDestruicaoPendente = null;
+  game.bus.on("cartaSeraDestruida", (e) => {
+    const delay = proximoAtraso();
+    atrasoDestruicaoPendente = delay;
+    const elemento = elCartaAtual.get(e.carta);
+    if (elemento) fxSpawnAnel(elemento.getBoundingClientRect(), "dano", delay);
+  });
+  game.bus.on("cartaDestruida", (e) => {
+    const delay = atrasoDestruicaoPendente != null ? atrasoDestruicaoPendente : proximoAtraso();
+    atrasoDestruicaoPendente = null;
+    if (e.playerId === null) return; // carta sem dono nesse contexto — nada a animar
+    const elemento = elCartaAtual.get(e.carta);
+    const origem = elemento ? elemento.getBoundingClientRect() : (rectMonstro(e.playerId) || rectLinhaMagia(e.playerId));
+    fxSpawnGhost(origem, rectPilha(e.playerId, "descarte"), e.carta.arquivo, delay);
+  });
+
+  // ataqueDeclarado: uma leve vibração no atacante, a "batida" de tensão
+  // antes do impacto.
+  game.bus.on("ataqueDeclarado", (e) => fxShake(elCartaAtual.get(e.atacante), proximoAtraso()));
+
+  // danoCausado + vidaAlterada: o número flutuante aparece UMA vez só — se
+  // vidaAlterada é o gêmeo direto do dano que acabou de aparecer (mesmo
+  // jogador, mesma quantidade em módulo), não duplica.
+  let ultimoDanoDireto = null;
+  game.bus.on("danoCausado", (e) => {
+    const delay = proximoAtraso();
+    ultimoDanoDireto = { alvoPlayer: e.alvoPlayer, quantidade: e.quantidade };
+    if (e.alvo) {
+      const elemento = elCartaAtual.get(e.alvo);
+      if (elemento) {
+        fxPulso(elemento, "dano", delay);
+        fxSpawnNumero(elemento.getBoundingClientRect(), `-${e.quantidade}`, "dano", delay);
+      }
+    } else {
+      fxSpawnNumero(rectInfoLado(e.alvoPlayer), `-${e.quantidade}`, "dano", delay);
+    }
+  });
+  game.bus.on("vidaAlterada", (e) => {
+    if (ultimoDanoDireto && ultimoDanoDireto.alvoPlayer === e.playerId && e.delta === -ultimoDanoDireto.quantidade) {
+      ultimoDanoDireto = null;
+      return;
+    }
+    const delay = proximoAtraso(70);
+    fxSpawnNumero(rectInfoLado(e.playerId), `${e.delta >= 0 ? "+" : ""}${e.delta}`, e.delta >= 0 ? "cura" : "dano", delay);
+  });
+
+  // habilidadeAtivada: brilho no próprio combatente que ativou.
+  game.bus.on("habilidadeAtivada", (e) => fxPulso(elCartaAtual.get(e.carta), "destaque", proximoAtraso()));
+
+  // dominioAtivado/encantamentoJogado: voam da mão até a linha de magia
+  // (mira a linha inteira, não um slot específico — o índice exato só se
+  // resolve no próximo render).
+  game.bus.on("dominioAtivado", (e) => fxSpawnGhost(rectMaoLocal(), rectLinhaMagia(e.playerId), e.carta.arquivo, proximoAtraso()));
+  game.bus.on("encantamentoJogado", (e) => fxSpawnGhost(rectMaoLocal(), rectLinhaMagia(e.playerId), e.carta.arquivo, proximoAtraso()));
+
+  // maldicaoColocada: NUNCA mostra a arte real de uma Maldição do OPONENTE
+  // sendo setada — vazaria a identidade da carta (ver testar_maldicao_oculta
+  // em scripts/testar_webgame_playwright.py). A própria Maldição do jogador
+  // local pode voar normalmente; a do oponente só ganha um pulso genérico.
+  game.bus.on("maldicaoColocada", (e) => {
+    const delay = proximoAtraso();
+    if (e.playerId === jogadorLocal) fxSpawnGhost(rectMaoLocal(), rectLinhaMagia(e.playerId), e.carta.arquivo, delay);
+    else fxPulso(document.querySelector(`#${containerIdDe(e.playerId)} .linha-magia`), "destaque", delay);
+  });
+
+  // maldicaoAtivada: nesse momento a carta já virou pra cima (pública pros
+  // dois lados), então mostrar a arte real não vaza nada mais.
+  game.bus.on("maldicaoAtivada", (e) => {
+    const delay = proximoAtraso();
+    const elemento = elCartaAtual.get(e.carta);
+    fxSpawnAnel(elemento ? elemento.getBoundingClientRect() : rectLinhaMagia(e.playerId), "destaque", delay);
+  });
+
+  // statusAlterado (buff/debuff/cura — ver TCG.buff/TCG.curar): sinal
+  // genérico, cobre efeitos de Habilidade/Domínio/Maldição sem precisar
+  // saber qual carta causou (frequentemente é uma carta DIFERENTE da
+  // nomeada no evento que disparou o efeito).
+  game.bus.on("statusAlterado", (e) => {
+    const elemento = elCartaAtual.get(e.carta);
+    if (!elemento) return;
+    const delay = proximoAtraso(70);
+    const tipo = e.delta > 0 ? "cura" : "dano";
+    fxPulso(elemento, tipo, delay);
+    fxSpawnNumero(elemento.getBoundingClientRect(), `${e.delta >= 0 ? "+" : ""}${e.delta}`, tipo, delay);
+  });
 
   // ---- log via eventos -----------------------------------------
 
