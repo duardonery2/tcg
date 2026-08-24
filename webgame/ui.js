@@ -721,16 +721,22 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // (elCartaAtual ainda aponta pro DOM do render ANTERIOR nesse instante,
   // ver comentário de elCartaAtual acima) até um slot do TAMANHO de uma
   // carta na linha de magia (rectSlotDeMagia), não a linha inteira esticada.
-  function origemNaMaoDe(carta) {
+  // A mão do OPONENTE nunca é renderizada carta a carta (só a contagem —
+  // ver renderMao, que só desenha game.players[jogadorLocal].mao), então
+  // elCartaAtual nunca tem uma carta da mão dele mapeada: cair pra
+  // rectMaoLocal() nesse caso seria a mão ERRADA (a do jogador local,
+  // sempre embaixo na tela) — usa o "info-lado" do DONO de verdade.
+  function origemNaMaoDe(carta, playerId) {
     const elemento = elCartaAtual.get(carta);
-    return elemento ? elemento.getBoundingClientRect() : rectMaoLocal();
+    if (elemento) return elemento.getBoundingClientRect();
+    return playerId === jogadorLocal ? rectMaoLocal() : rectInfoLado(playerId);
   }
   game.bus.on("dominioAtivado", (e) => {
-    const origem = origemNaMaoDe(e.carta);
+    const origem = origemNaMaoDe(e.carta, e.playerId);
     enfileirarFx((avancar) => fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar));
   });
   game.bus.on("encantamentoJogado", (e) => {
-    const origem = origemNaMaoDe(e.carta);
+    const origem = origemNaMaoDe(e.carta, e.playerId);
     enfileirarFx((avancar) => fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar));
   });
 
@@ -741,7 +747,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // oponente só ganha um pulso genérico num slot da linha de magia dele.
   game.bus.on("maldicaoColocada", (e) => {
     if (e.playerId === jogadorLocal) {
-      const origem = origemNaMaoDe(e.carta);
+      const origem = origemNaMaoDe(e.carta, e.playerId);
       enfileirarFx((avancar) => fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar));
     } else {
       enfileirarFx((avancar) => fxPulso(document.querySelector(`#${containerIdDe(e.playerId)} .linha-magia .slot`), "destaque", avancar));

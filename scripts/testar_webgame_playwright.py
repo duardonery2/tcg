@@ -1239,6 +1239,51 @@ def testar_fx_fila_toca_eventos_em_sequencia_sem_descartar(browser):
     print("OK  fila de animação toca eventos em sequência (um de cada vez) sem descartar nenhum")
 
 
+def testar_fx_dominio_do_oponente_nao_voa_da_mao_local(browser):
+    """A mão do OPONENTE nunca é renderizada carta a carta (só a contagem —
+    ver renderMao), então elCartaAtual nunca mapeia uma carta da mão dele.
+    Um Domínio/Encantamento ativado pelo oponente tinha caído por engano no
+    fallback errado (rectMaoLocal — a mão do jogador LOCAL, sempre embaixo
+    na tela) em vez de nascer de perto do lado do dono de verdade."""
+    page = browser.new_page(viewport={"width": 1400, "height": 900})
+    erros = []
+    page.on("pageerror", lambda e: erros.append(str(e)))
+    page.on("console", lambda m: erros.append(m.text) if m.type == "error" else None)
+    page.goto(INDEX + "?seed=42")
+    page.wait_for_timeout(200)
+    imgs = page.query_selector_all("#selecao-opcoes img")
+    imgs[0].click()
+    # espera a animação de invocação do modal esvaziar antes de checar a próxima
+    for _ in range(20):
+        if page.evaluate("() => window.ui.filaFxVazia()"):
+            break
+        page.wait_for_timeout(80)
+
+    page.evaluate("""() => {
+        const g = window.game;
+        const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
+        g.bus.emit('dominioAtivado', { playerId: 2, carta: acharCarta("Fenda de R'lyeh"), slot: 0 });
+    }""")
+    page.wait_for_timeout(60)
+    r = page.evaluate("""() => {
+        const ghost = document.querySelector('#fx-layer .fx-ghost');
+        const maoLocal = document.getElementById('mao-jogador').getBoundingClientRect();
+        const infoOponente = document.querySelector('#tabuleiro-oponente .info-lado').getBoundingClientRect();
+        return {
+            ghostX0: ghost ? parseFloat(getComputedStyle(ghost).getPropertyValue('--x0')) : null,
+            maoLocalLeft: maoLocal.left,
+            infoOponenteLeft: infoOponente.left,
+        };
+    }""")
+    print("resultado:", r)
+    assert r["ghostX0"] is not None, "o Domínio do oponente deveria ter disparado uma animação"
+    assert abs(r["ghostX0"] - r["infoOponenteLeft"]) < 1, \
+        f"a animação nasceu perto da mão LOCAL (errado) em vez do lado do oponente: {r}"
+    assert not erros, f"erros no console: {erros}"
+    page.close()
+    print("OK  Domínio ativado pelo oponente anima a partir do lado dele, não da mão do jogador local")
+
+
 def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -1264,6 +1309,7 @@ def main():
         testar_fx_statusAlterado_nao_dispara_ao_reaplicar_passivo_sem_mudanca(browser)
         testar_fx_nao_deixa_no_apos_uma_rajada_de_eventos(browser)
         testar_fx_fila_toca_eventos_em_sequencia_sem_descartar(browser)
+        testar_fx_dominio_do_oponente_nao_voa_da_mao_local(browser)
         testar_partida_completa(browser)
         browser.close()
     print("\nTODOS OS TESTES PASSARAM")
