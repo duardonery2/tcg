@@ -669,20 +669,32 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // habilidadeAtivada: brilho no próprio combatente que ativou.
   game.bus.on("habilidadeAtivada", (e) => fxPulso(elCartaAtual.get(e.carta), "destaque", proximoAtraso()));
 
-  // dominioAtivado/encantamentoJogado: voam da mão até a linha de magia
-  // (mira a linha inteira, não um slot específico — o índice exato só se
-  // resolve no próximo render).
-  game.bus.on("dominioAtivado", (e) => fxSpawnGhost(rectMaoLocal(), rectLinhaMagia(e.playerId), e.carta.arquivo, proximoAtraso()));
-  game.bus.on("encantamentoJogado", (e) => fxSpawnGhost(rectMaoLocal(), rectLinhaMagia(e.playerId), e.carta.arquivo, proximoAtraso()));
+  // dominioAtivado/encantamentoJogado/maldicaoColocada ("jogar carta de
+  // campo" — mesma família de combatenteInvocado/cartaComprada): mesmo
+  // tratamento do summon — voa de onde a carta REALMENTE estava na mão
+  // (elCartaAtual ainda aponta pro DOM do render ANTERIOR nesse instante,
+  // ver comentário de elCartaAtual acima) até um slot do TAMANHO de uma
+  // carta na linha de magia (rectSlotDeMagia), não a linha inteira esticada.
+  function origemNaMaoDe(carta) {
+    const elemento = elCartaAtual.get(carta);
+    return elemento ? elemento.getBoundingClientRect() : rectMaoLocal();
+  }
+  game.bus.on("dominioAtivado", (e) => {
+    fxSpawnGhost(origemNaMaoDe(e.carta), rectSlotDeMagia(e.playerId), e.carta.arquivo, proximoAtraso());
+  });
+  game.bus.on("encantamentoJogado", (e) => {
+    fxSpawnGhost(origemNaMaoDe(e.carta), rectSlotDeMagia(e.playerId), e.carta.arquivo, proximoAtraso());
+  });
 
   // maldicaoColocada: NUNCA mostra a arte real de uma Maldição do OPONENTE
   // sendo setada — vazaria a identidade da carta (ver testar_maldicao_oculta
   // em scripts/testar_webgame_playwright.py). A própria Maldição do jogador
-  // local pode voar normalmente; a do oponente só ganha um pulso genérico.
+  // local pode voar normalmente, igual a um Domínio/Encantamento; a do
+  // oponente só ganha um pulso genérico num slot da linha de magia dele.
   game.bus.on("maldicaoColocada", (e) => {
     const delay = proximoAtraso();
-    if (e.playerId === jogadorLocal) fxSpawnGhost(rectMaoLocal(), rectLinhaMagia(e.playerId), e.carta.arquivo, delay);
-    else fxPulso(document.querySelector(`#${containerIdDe(e.playerId)} .linha-magia`), "destaque", delay);
+    if (e.playerId === jogadorLocal) fxSpawnGhost(origemNaMaoDe(e.carta), rectSlotDeMagia(e.playerId), e.carta.arquivo, delay);
+    else fxPulso(document.querySelector(`#${containerIdDe(e.playerId)} .linha-magia .slot`), "destaque", delay);
   });
 
   // maldicaoAtivada: nesse momento a carta já virou pra cima (pública pros
