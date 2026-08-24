@@ -259,35 +259,47 @@ button.acao:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* -- em-lugar ------------------------------------------------------- */
 
+/* Duração agora vem do SOM pareado (ver DURACAO_SOM em ui.js) — pode ser
+   bem mais longa que o "golpe" visual em si (ex.: Attack.wav = 1.42s).
+   Pulso/shake/anel front-load o movimento nos primeiros ~35-45% do tempo
+   e SEGURAM no estado final pro resto — sem isso, esticar o mesmo keyframe
+   pela duração inteira faria a "batida" ficar lenta/mole em vez de rápida,
+   com o som só tocando por cima de um resto de tempo parado (o que é
+   exatamente a intenção: o efeito visual pontua o INÍCIO do som). */
+
 .fx-pulso {
-  animation: fx-pulso 320ms ease-out both;
+  animation: fx-pulso var(--fx-duracao, 320ms) ease-out both;
 }
 @keyframes fx-pulso {
-  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--fx-cor, var(--fx-destaque)) 70%, transparent); }
-  40%  { box-shadow: 0 0 0 6px color-mix(in srgb, var(--fx-cor, var(--fx-destaque)) 55%, transparent); }
-  100% { box-shadow: 0 0 0 0 transparent; }
+  0%        { box-shadow: 0 0 0 0 color-mix(in srgb, var(--fx-cor, var(--fx-destaque)) 70%, transparent); }
+  18%       { box-shadow: 0 0 0 6px color-mix(in srgb, var(--fx-cor, var(--fx-destaque)) 55%, transparent); }
+  45%, 100% { box-shadow: 0 0 0 0 transparent; }
 }
 
-/* variante maior/mais demorada — usada no impacto de dano (ver ui.js,
-   fxPulso(..., true)): o momento mais importante de acompanhar na partida. */
+/* variante maior — usada no impacto de dano (ver ui.js, fxPulso(..., true)):
+   o momento mais importante de acompanhar na partida. */
 .fx-pulso.grande {
-  animation: fx-pulso-grande 550ms ease-out both;
+  animation: fx-pulso-grande var(--fx-duracao, 550ms) ease-out both;
 }
 @keyframes fx-pulso-grande {
-  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--fx-cor, var(--fx-dano)) 80%, transparent); transform: scale(1); }
-  30%  { box-shadow: 0 0 0 14px color-mix(in srgb, var(--fx-cor, var(--fx-dano)) 60%, transparent); transform: scale(1.05); }
-  100% { box-shadow: 0 0 0 0 transparent; transform: scale(1); }
+  0%        { box-shadow: 0 0 0 0 color-mix(in srgb, var(--fx-cor, var(--fx-dano)) 80%, transparent); transform: scale(1); }
+  16%       { box-shadow: 0 0 0 14px color-mix(in srgb, var(--fx-cor, var(--fx-dano)) 60%, transparent); transform: scale(1.05); }
+  40%, 100% { box-shadow: 0 0 0 0 transparent; transform: scale(1); }
 }
 
 .fx-shake {
-  animation: fx-shake 260ms ease-in-out both;
+  animation: fx-shake var(--fx-duracao, 260ms) ease-in-out both;
 }
 @keyframes fx-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-4px); }
-  40% { transform: translateX(4px); }
-  60% { transform: translateX(-3px); }
-  80% { transform: translateX(2px); }
+  0%, 45%, 100% { transform: translateX(0); }
+  4%  { transform: translateX(-6px); }
+  9%  { transform: translateX(6px); }
+  14% { transform: translateX(-5px); }
+  19% { transform: translateX(5px); }
+  24% { transform: translateX(-4px); }
+  29% { transform: translateX(4px); }
+  34% { transform: translateX(-2px); }
+  39% { transform: translateX(2px); }
 }
 
 /* -- camada (#fx-layer) ---------------------------------------------- */
@@ -312,7 +324,7 @@ button.acao:disabled { opacity: 0.4; cursor: not-allowed; }
   color: var(--fx-cor, var(--fx-destaque));
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   white-space: nowrap;
-  animation: fx-float-num 700ms ease-out both;
+  animation: fx-float-num var(--fx-duracao, 700ms) ease-out both;
 }
 @keyframes fx-float-num {
   0%   { transform: translate(-50%, 0); opacity: 0; }
@@ -331,7 +343,7 @@ button.acao:disabled { opacity: 0.4; cursor: not-allowed; }
     -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000,
     -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000,
     0 2px 6px rgba(0, 0, 0, 0.9);
-  animation: fx-float-num-grande 1100ms ease-out both;
+  animation: fx-float-num-grande var(--fx-duracao, 1100ms) ease-out both;
 }
 @keyframes fx-float-num-grande {
   0%   { transform: translate(-50%, 0) scale(0.75); opacity: 0; }
@@ -344,11 +356,11 @@ button.acao:disabled { opacity: 0.4; cursor: not-allowed; }
   position: fixed;
   border-radius: 10px;
   border: 3px solid var(--fx-cor, var(--fx-dano));
-  animation: fx-anel 420ms ease-out both;
+  animation: fx-anel var(--fx-duracao, 420ms) ease-out both;
 }
 @keyframes fx-anel {
-  0%   { opacity: 0.9; transform: scale(0.9); }
-  100% { opacity: 0; transform: scale(1.35); }
+  0%        { opacity: 0.9; transform: scale(0.9); }
+  35%, 100% { opacity: 0; transform: scale(1.35); }
 }
 
 /* Revelação de Maldição: flip 3D verso -> arte real (ver ui.js fxSpawnFlip).

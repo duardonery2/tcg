@@ -63,11 +63,37 @@ def esperar_fila_fx_esvaziar(page, max_ms=30000, passo_ms=200):
     return False
 
 
+def esperar_modal_abrir(page, max_ms=8000, passo_ms=100):
+    """O modal de seleção agora é MAIS UM item da fila de animação (ver
+    "selecaoPedida" em ui.js) — só aparece depois que qualquer animação já
+    enfileirada antes dele (ex.: o "shake" do próprio ataque que motivou uma
+    decisão de Maldição reativa) termina de tocar. Sons reais duram bem mais
+    que os antigos tempos fixos de CSS (Attack.wav = 1.42s, por exemplo) —
+    por isso espera de verdade em vez de adivinhar um tempo curto fixo."""
+    decorrido = 0
+    while decorrido < max_ms:
+        if page.eval_on_selector("#overlay-selecao", "el => el.classList.contains('ativo')"):
+            return True
+        page.wait_for_timeout(passo_ms)
+        decorrido += passo_ms
+    return False
+
+
 def jogar_ate_o_fim(page, max_ciclos=250):
     for _ in range(max_ciclos):
         estado = page.evaluate("() => TCG.estado(window.game)")
         if estado["fimDeJogo"]:
             return estado
+        # o modal de seleção é MAIS UM item da fila de animação (ver
+        # "selecaoPedida" em ui.js) — pode existir uma decisão pendente de
+        # verdade pro jogador local sem o modal ainda estar visível (atrás de
+        # animação/som ainda tocando). Sem esperar aqui, o resto do laço só
+        # clicaria em botões que não fazem nada enquanto o jogo genuinamente
+        # espera essa escolha, e a partida nunca terminaria dentro do
+        # orçamento de ciclos.
+        pendente = page.evaluate("() => window.game.selection.algumaPendentePara(1) !== null")
+        if pendente:
+            esperar_modal_abrir(page, max_ms=20000, passo_ms=150)
         fechar_modal_se_aberto(page)
         if estado["fase"] == "TATICA":
             # joga a 1a carta da mão (Domínio/Encantamento/Maldição, se houver)
@@ -275,6 +301,11 @@ def testar_gatilho_de_maldicao_ao_ser_atacado(browser):
     page.on("console", lambda m: erros.append(m.text) if m.type == "error" else None)
     page.goto(INDEX + "?seed=42")
     page.wait_for_timeout(200)
+    # o modal automático de invocação (agora MAIS UM item da fila de
+    # animação, ver "selecaoPedida" em ui.js) precisa ser fechado ANTES —
+    # senão a fila fica travada esperando ele, e o modal do gatilho de
+    # Maldição (também enfileirado) nunca chega a aparecer de verdade.
+    fechar_modal_se_aberto(page, escolher=False)
 
     page.evaluate("""() => {
         const g = window.game;
@@ -299,9 +330,10 @@ def testar_gatilho_de_maldicao_ao_ser_atacado(browser):
         g.board[1].magia = [maldicao, null, null, null, null];
         TCG.acoes.atacar(g, 2, 1);
     }""")
-    page.wait_for_timeout(150)
 
-    overlay_ativo = page.eval_on_selector("#overlay-selecao", "el => el.classList.contains('ativo')")
+    # o "shake" do próprio ataque (Attack.wav, ~1.4s) toca ANTES do modal —
+    # o modal é mais um item da fila, não aparece por cima dele.
+    overlay_ativo = esperar_modal_abrir(page)
     assert overlay_ativo, "o gatilho deveria abrir o modal perguntando se quer ativar a Maldição"
     assert "Maldição" in page.text_content("#selecao-prompt"), "prompt do gatilho nao bate"
 
@@ -882,8 +914,8 @@ def testar_caixa_de_pandora_gatilho_correto(browser):
         g.board[1].monstro = heroi;
         TCG.destroyCard(g, heroi, 'derrotado em combate'); // Combatente DO DONO da Caixa de Pandora
     }""")
-    page.wait_for_timeout(100)
-    overlay_ativo = page.eval_on_selector("#overlay-selecao", "el => el.classList.contains('ativo')")
+    # a destruição por combate toca sua própria animação/som antes do modal.
+    overlay_ativo = esperar_modal_abrir(page)
     assert overlay_ativo, "deveria ter aberto o modal perguntando se quer ativar a Caixa de Pandora"
     descarte_antes = page.evaluate("() => window.game.descarte[2].length")
     assert descarte_antes == 0, "o jogo deveria estar PARADO esperando a decisão, sem ter descartado nada ainda"
@@ -932,18 +964,16 @@ def testar_turno_da_ia_para_de_verdade_para_decisao_de_maldicao(browser):
 
     turno_antes = page.evaluate("() => window.game.turno")
     page.click("#btn-fase")  # "Fim de Turno" -> dispara TCG.executarTurnoIA de verdade
-    page.wait_for_timeout(150)
+    page.wait_for_timeout(50)  # o ESTADO do jogo já é síncrono (pausa de verdade, não animação) — 50ms sobra
 
     estado = page.evaluate("""() => {
         const g = window.game;
         return {
             jogadorDaVez: g.jogadorDaVez, fase: g.fase, turno: g.turno,
-            overlayAtivo: document.getElementById('overlay-selecao').classList.contains('ativo'),
             resDefensor: g.board[1].monstro ? g.board[1].monstro.atualRes : null,
         };
     }""")
     print(f"turno antes={turno_antes}, estado logo após clicar Fim de Turno:", estado)
-    assert estado["overlayAtivo"], "o modal da Maldição reativa deveria estar aberto"
     assert estado["jogadorDaVez"] == 2 and estado["fase"] == "COMBATE", \
         f"o jogo deveria estar PARADO no meio do turno da IA (ainda jogadorDaVez=2/fase=COMBATE), veio {estado}"
     # turno_antes+1 é esperado (o clique em "Fim de Turno" primeiro fecha o
@@ -953,6 +983,12 @@ def testar_turno_da_ia_para_de_verdade_para_decisao_de_maldicao(browser):
     assert estado["turno"] == turno_antes + 1, \
         f"só o fechamento do turno do jogador deveria ter avançado o turno (esperado {turno_antes + 1}), veio {estado['turno']}"
     assert estado["resDefensor"] == 15, "o dano não deveria ter sido calculado antes da decisão"
+
+    # o modal em si é MAIS UM item da fila de animação — um turno de IA
+    # inteiro (invocação, tática, o "shake" do ataque...) pode ter enfileirado
+    # bastante coisa antes dele, então espera de verdade em vez de um tempo fixo.
+    overlay_ativo = esperar_modal_abrir(page, max_ms=15000)
+    assert overlay_ativo, "o modal da Maldição reativa deveria estar aberto"
 
     # resolve a decisão -> o resto do turno da IA (e a passagem pro turno do
     # jogador local) deve completar sozinho, encadeado pela própria resolução.
@@ -995,8 +1031,8 @@ def testar_maldicao_reativa_em_evento_nao_ataque(browser):
         TCG.acoes.invocar(g, 2, novoCombatente);
         return { baseRes: novoCombatente.resistencia };
     }""")
-    page.wait_for_timeout(100)
-    overlay_ativo = page.eval_on_selector("#overlay-selecao", "el => el.classList.contains('ativo')")
+    # a animação/som de invocação (Special Summon.wav, ~2.3s) toca antes do modal.
+    overlay_ativo = esperar_modal_abrir(page)
     assert overlay_ativo, "invocar um Combatente deveria oferecer Areias Movediças pro modal"
 
     page.query_selector_all("#selecao-opcoes img")[0].click()
@@ -1095,7 +1131,10 @@ def testar_fx_summon_voa_e_limpa_sozinho(browser):
     imgs[0].click()
     page.wait_for_timeout(60)
     logo_apos = page.eval_on_selector_all("#fx-layer > *", "els => els.length")
-    page.wait_for_timeout(600)  # janela generosa: maior duracao+atraso usados é bem menor que isso
+    # a duração agora vem do som pareado (Special Summon.wav, ~2.3s) — espera
+    # de verdade a fila esvaziar em vez de um tempo fixo (que era pensado
+    # pros ~380ms de antes de sincronizar com áudio).
+    esperar_fila_fx_esvaziar(page, max_ms=6000)
     depois = page.eval_on_selector_all("#fx-layer > *", "els => els.length")
 
     assert antes == 0, f"#fx-layer já tinha elemento(s) antes de qualquer ação: {antes}"
@@ -1223,13 +1262,17 @@ def testar_fx_fila_toca_eventos_em_sequencia_sem_descartar(browser):
     page.wait_for_timeout(80)
     textos_cedo = page.eval_on_selector_all("#fx-layer .fx-num", "els => els.map(e => e.textContent)")
 
-    # espera a fila esvaziar de vez, acumulando todo texto visto no caminho
-    # — prova que os DOIS golpes realmente tocaram (nenhum foi descartado).
+    # espera a fila esvaziar de vez (cada golpe usa a duração de Damage.wav,
+    # ~1.75s — dois em sequência levam bem mais que os 3s do laço antigo),
+    # acumulando todo texto visto no caminho — prova que os DOIS golpes
+    # realmente tocaram (nenhum foi descartado).
     vistos = set(textos_cedo)
-    for _ in range(30):
+    decorrido = 0
+    while decorrido < 8000:
         if page.evaluate("() => window.ui.filaFxVazia()"):
             break
-        page.wait_for_timeout(100)
+        page.wait_for_timeout(150)
+        decorrido += 150
         vistos.update(page.eval_on_selector_all("#fx-layer .fx-num", "els => els.map(e => e.textContent)"))
 
     assert len(textos_cedo) <= 1, f"os dois golpes de dano apareceram AO MESMO TEMPO: {textos_cedo}"
@@ -1253,11 +1296,9 @@ def testar_fx_dominio_do_oponente_nao_voa_da_mao_local(browser):
     page.wait_for_timeout(200)
     imgs = page.query_selector_all("#selecao-opcoes img")
     imgs[0].click()
-    # espera a animação de invocação do modal esvaziar antes de checar a próxima
-    for _ in range(20):
-        if page.evaluate("() => window.ui.filaFxVazia()"):
-            break
-        page.wait_for_timeout(80)
+    # espera a animação de invocação do modal esvaziar antes de checar a
+    # próxima (Special Summon.wav, ~2.3s — bem mais que os antigos 380ms).
+    esperar_fila_fx_esvaziar(page, max_ms=5000)
 
     page.evaluate("""() => {
         const g = window.game;
@@ -1310,7 +1351,9 @@ def testar_sons_tocam_junto_com_as_animacoes(browser):
         g.bus.emit('ataqueDeclarado', { atacantePlayer: 1, atacante, defensorPlayer: 2, defensor: null });
         g.bus.emit('danoCausado', { quantidade: 9, alvo: null, alvoPlayer: 2 });
     }""")
-    page.wait_for_timeout(1300)
+    # invocar+atacar+dano enfileirados em sequência: Special Summon (2.3s) +
+    # Attack (1.42s) + Damage (1.75s) — espera de verdade em vez de um tempo fixo.
+    esperar_fila_fx_esvaziar(page, max_ms=8000)
 
     vistos = {s.replace("%20", " ") for s in sons_pedidos}
     print("sons pedidos:", sorted(vistos))
