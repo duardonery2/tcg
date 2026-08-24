@@ -289,10 +289,16 @@ function expirarBuffsDeFimDeTurno(game) {
         (st) => st.duracao !== "NESTE_TURNO" && st.duracao !== "ATE_FIM_DE_TURNO"
       );
       if (carta.statusEffects.length !== antes) TCG.recalcularStats(carta);
-      // danoDobradoContraMonstro (Sigurd) e sempre NESTE_TURNO por natureza
-      // — a mera flag ligada já significa "ainda não expirou"; não precisa
-      // de campo de duração próprio, sempre desliga incondicionalmente aqui.
+      // danoDobradoContraMonstro (Sigurd) e ignoraFraquezaElemental
+      // (Shoggoth: "Disforme... até o fim do turno") são sempre NESTE_TURNO/
+      // ATE_FIM_DE_TURNO por natureza — a mera flag ligada já significa
+      // "ainda não expirou"; não precisam de campo de duração próprio,
+      // sempre desligam incondicionalmente aqui. (Céus de Valíria também
+      // usa ignoraFraquezaElemental, mas via passivo limpa-e-reaplica a
+      // cada Fase Principal — desligar aqui não atrapalha, só cria uma
+      // janela inofensiva até a próxima Principal reaplicar.)
       carta.danoDobradoContraMonstro = false;
+      carta.ignoraFraquezaElemental = false;
     }
   }
 }

@@ -203,6 +203,15 @@ class IgnoraFraquezaElemental:
 
 
 @dataclass
+class AttackedThisTurn:
+    """Flag: este combatente já atacou neste turno — no máx. 1 ataque por
+    turno por combatente (GAME_DESIGN.md, 'Declarar um ataque'). Removida
+    incondicionalmente na entrada da Fase de Saque (UpkeepSystem), igual
+    a AbilityCost.usada_neste_turno."""
+    pass
+
+
+@dataclass
 class DanoDobradoContraMonstro:
     """Flag NESTE_TURNO no ATACANTE (Sigurd, "Matador de Feras: Dano em
     dobro contra Monstros"): ativar a Habilidade so prepara o buff — o dano

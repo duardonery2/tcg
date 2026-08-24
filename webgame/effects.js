@@ -86,6 +86,22 @@ TCG.retornarAoPanteao = function retornarAoPanteao(game, playerId, carta) {
   if (!carta) return;
   const lado = game.board[playerId];
   if (lado.monstro === carta) TCG.Board.removerMonstro(lado);
+  // Volta como copia "intocada": sem dano/buffs acumulados nem gatilhos
+  // pendurados na carta — igual a qualquer outro Combatente esperando no
+  // Panteão pra ser invocado (convenção padrão de TCG: sair de campo
+  // "reseta" o objeto; sem isso, ex.: o gatilho de Veneno de Jörmungandr
+  // continuava mordendo um alvo que nem estava mais em jogo, e uma carta
+  // podia voltar pro Panteão carregando dano/buff da vida anterior).
+  TCG.removerPassivosDe(game, carta);
+  TCG.removerTriggersDe(game, carta);
+  carta.statusEffects = [];
+  TCG.recalcularStats(carta);
+  carta.attackNegated = false;
+  carta.damageReflected = false;
+  carta.ignoraFraquezaElemental = false;
+  carta.danoDobradoContraMonstro = false;
+  carta.habilidadeUsadaNesteTurno = false;
+  carta.atacouNesteTurno = false;
   TCG.Deck.devolver(game.panteoes[playerId], carta);
 };
 

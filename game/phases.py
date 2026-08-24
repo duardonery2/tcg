@@ -12,8 +12,8 @@ Ordem das fases por turno (GAME_DESIGN.md, 'A Estrutura do Turno'):
 from __future__ import annotations
 
 from .components import (
-    AbilityCost, CombatStats, DanoDobradoContraMonstro, Duracao, Fase,
-    StatusEffects, TurnState,
+    AbilityCost, AttackedThisTurn, CombatStats, DanoDobradoContraMonstro,
+    Duracao, Fase, IgnoraFraquezaElemental, StatusEffects, TurnState,
 )
 from .ecs import System, World
 from .events import EventBus, PhaseChanged, TurnStarted
@@ -94,6 +94,8 @@ class UpkeepSystem(System):
         if event.fase_nova is Fase.SAQUE:
             for eid, ability in world.query(AbilityCost):
                 ability.usada_neste_turno = False
+            for eid, _ in list(world.query(AttackedThisTurn)):
+                world.remove_component(eid, AttackedThisTurn)
         elif event.fase_nova is Fase.FINAL:
             for eid, statuses in world.query(StatusEffects):
                 restantes = []
@@ -104,12 +106,21 @@ class UpkeepSystem(System):
                 if len(restantes) != len(statuses.itens):
                     statuses.itens = restantes
                     _recalcular_stats(world, eid)
-            # DanoDobradoContraMonstro (Sigurd) e sempre NESTE_TURNO por
-            # natureza — a mera presenca do componente já significa "ainda
-            # não expirou"; remove incondicionalmente, sem precisar de campo
-            # de duracao proprio.
+            # DanoDobradoContraMonstro (Sigurd) e IgnoraFraquezaElemental
+            # (Shoggoth: "Disforme... até o fim do turno") são sempre
+            # NESTE_TURNO/ATE_FIM_DE_TURNO por natureza — a mera presença do
+            # componente já significa "ainda não expirou"; removidos
+            # incondicionalmente aqui, sem precisar reler o campo `duracao`
+            # de IgnoraFraquezaElemental (que existia mas nunca era checado —
+            # bug real: o Disforme de Shoggoth nunca expirava). Céus de
+            # Valíria também usa IgnoraFraquezaElemental, mas via passivo
+            # limpa-e-reaplica a cada Fase Principal — remover aqui não
+            # atrapalha, só cria uma janela inofensiva até a próxima
+            # Principal reaplicar.
             for eid, _ in list(world.query(DanoDobradoContraMonstro)):
                 world.remove_component(eid, DanoDobradoContraMonstro)
+            for eid, _ in list(world.query(IgnoraFraquezaElemental)):
+                world.remove_component(eid, IgnoraFraquezaElemental)
 
     def update(self, world: World, **ctx) -> None:
         self.bind(world)

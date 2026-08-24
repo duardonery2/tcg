@@ -8,7 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .components import (
-    AbilityCost, CardInfo, Fase, FaceDown, Location, ManaCost, Zona,
+    AbilityCost, AttackedThisTurn, CardInfo, Fase, FaceDown, Location,
+    ManaCost, Zona,
 )
 from .deck import Deck
 from .events import (
@@ -64,6 +65,13 @@ class SummonAction:
         ability = ctrl.world.get_component(self.card, AbilityCost)
         if ability is not None:
             ability.usada_neste_turno = False
+        # mesma lógica pro "já atacou neste turno" (Cânion dos Ventos): sem
+        # isso, um combatente que atacou, voltou ao Panteão e foi invocado
+        # de novo no MESMO turno ficaria impedido de atacar de novo. Já é
+        # redundante com o reset feito em retornar_ao_panteao, mas mantido
+        # aqui também por defesa (mesmo padrão do reset de AbilityCost acima).
+        if ctrl.world.has_component(self.card, AttackedThisTurn):
+            ctrl.world.remove_component(self.card, AttackedThisTurn)
         lado.colocar_monstro(self.card)
         loc = ctrl.world.get_component(self.card, Location)
         if loc:
@@ -252,9 +260,18 @@ class DeclareAttackAction:
 
     def executar(self, ctrl) -> None:
         _exigir_fase(ctrl, self.player_id, Fase.BATALHA)
+        # GAME_DESIGN.md, 'Declarar um ataque': "Fase de Batalha, 1x/turno
+        # por combatente, nunca no 1º turno da partida" — nenhuma das duas
+        # restrições era verificada aqui antes desta correção (bug real: o
+        # motor Python deixava atacar quantas vezes quisesse, e no turno 1).
+        if ctrl.fase_system.estado_atual(ctrl.world).numero_turno == 1:
+            raise AcaoInvalida("Nao e possivel atacar no primeiro turno.")
         atacante = ctrl.board.lado(self.player_id).monstro
         if atacante is None:
             raise AcaoInvalida("Nao ha combatente ativo pra atacar.")
+        if ctrl.world.has_component(atacante, AttackedThisTurn):
+            raise AcaoInvalida("Esse combatente ja atacou neste turno.")
+        ctrl.world.add_component(atacante, AttackedThisTurn())
         defensor = ctrl.board.lado(self.oponente_id).monstro
 
         # Maldições reativas elegíveis pro ataque (Escudo de Gelo Absoluto,

@@ -73,12 +73,15 @@ def main() -> None:
     print("\n=== Fase Principal: (nada a fazer neste exemplo) ===")
     ctrl.avancar_fase()  # INVOCACAO -> PRINCIPAL
 
-    print("\n=== Fase de Batalha: ativa a Habilidade (se houver) e ataca ===")
+    print("\n=== Fase de Batalha: ativa a Habilidade (se houver); atacar é proibido no 1º turno ===")
     ctrl.avancar_fase()  # PRINCIPAL -> BATALHA
     from .components import AbilityCost
     if ctrl.world.has_component(escolhido, AbilityCost):
         ctrl.submeter_acao(ActivateAbilityAction(player_id=1, card=escolhido))
-    ctrl.submeter_acao(DeclareAttackAction(player_id=1, oponente_id=2))
+    try:
+        ctrl.submeter_acao(DeclareAttackAction(player_id=1, oponente_id=2))
+    except Exception as e:  # AcaoInvalida — GAME_DESIGN.md: "nunca no 1º turno da partida"
+        print(f"  (esperado) ataque recusado: {e}")
 
     print("\n=== passa a vez pra J2 (BATALHA -> SAQUE do J2) ===")
     ctrl.avancar_fase()

@@ -20,8 +20,9 @@ carta):
     lado, dado que o tabuleiro so tem 1 slot de Monstro).
   - Rebote Arcano exige rastrear "o proximo feitico inimigo" — stub
     comentado, nao modelado.
-  - Praga da Ferrugem depende de um subtipo "Equipamento" que nao existe
-    nos dados do CSV atual.
+  - Praga da Ferrugem e Gilgamesh ("Compre 1 carta de Equipamento")
+    dependem de um subtipo "Equipamento" que nao existe nos dados do CSV
+    atual — Gilgamesh compra do Baralho Arcano normal.
   - Apoio Incondicional precisaria de um mecanismo de "par de alvos
     vinculados" a parte — placeholder deliberado, cai no fallback de
     `executar` (nenhum efeito registrado, no-op).
@@ -34,7 +35,7 @@ from __future__ import annotations
 from typing import Callable
 
 from .components import (
-    AbilityCost, AttackNegated, CardInfo, CombatStats,
+    AbilityCost, AttackedThisTurn, AttackNegated, CardInfo, CombatStats,
     DamageReflected, DanoDobradoContraMonstro, Duracao, Elemento,
     ElementoOverride, FaceDown, IgnoraFraquezaElemental, Location, ManaCost,
     StatusEffect, StatusEffects, Tipo, Zona,
@@ -170,6 +171,29 @@ def retornar_ao_panteao(ctrl, player_id: int, card: int | None) -> None:
     lado = ctrl.board.lado(player_id)
     if lado.monstro == card:
         lado.remover_monstro()
+    # Volta como copia "intocada": sem dano/buffs acumulados nem gatilhos
+    # pendurados na entidade — igual a qualquer outro Combatente esperando
+    # no Panteão pra ser invocado (convenção padrão de TCG: sair de campo
+    # "reseta" o objeto). Sem isso, ex.: o gatilho de Veneno de Jörmungandr
+    # continuava mordendo um alvo que nem estava mais em jogo, e uma carta
+    # podia voltar pro Panteão carregando dano/buff da vida anterior.
+    from .triggers import remover_passivos_de, remover_triggers_de
+    remover_passivos_de(ctrl, card)
+    remover_triggers_de(ctrl, card)
+    stats = ctrl.world.get_component(card, CombatStats)
+    if stats is not None:
+        stats.atual_pow = stats.base_pow
+        stats.atual_res = stats.base_res
+    statuses = ctrl.world.get_component(card, StatusEffects)
+    if statuses is not None:
+        statuses.itens = []
+    for comp_type in (AttackNegated, DamageReflected, IgnoraFraquezaElemental,
+                       DanoDobradoContraMonstro, AttackedThisTurn):
+        if ctrl.world.has_component(card, comp_type):
+            ctrl.world.remove_component(card, comp_type)
+    ability = ctrl.world.get_component(card, AbilityCost)
+    if ability is not None:
+        ability.usada_neste_turno = False
     ctrl.panteoes[player_id].devolver(card)
     loc = ctrl.world.get_component(card, Location)
     if loc:
