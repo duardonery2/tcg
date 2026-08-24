@@ -102,8 +102,10 @@ def dano_combatente(ctrl, card: int | None, quantidade: int, origem: str = "") -
 def dano_jogador(ctrl, player_id: int, quantidade: int, origem: str = "") -> None:
     ps = ctrl.players[player_id]
     ps.vida = max(ps.vida - quantidade, 0)
-    ctrl.bus.publish(LifeChanged(player_id=player_id, delta=-quantidade, total=ps.vida))
+    # DamageDealt antes de LifeChanged — mesma ordem de systems.py/webgame,
+    # ver comentário lá (a UI web depende dessa ordem pra deduplicar FX).
     ctrl.bus.publish(DamageDealt(alvo=None, alvo_player=player_id, quantidade=quantidade, origem=origem))
+    ctrl.bus.publish(LifeChanged(player_id=player_id, delta=-quantidade, total=ps.vida))
 
 
 def destruir(ctrl, card: int | None, motivo: str = "") -> None:

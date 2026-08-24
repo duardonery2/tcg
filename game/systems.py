@@ -114,8 +114,13 @@ class CombatSystem:
             # Feiticeiro e Condicao de Vitoria')
             ps = self.players[defensor_player]
             ps.vida = max(ps.vida - dano, 0)
-            self.bus.publish(LifeChanged(player_id=defensor_player, delta=-dano, total=ps.vida))
+            # DamageDealt ANTES de LifeChanged: espelha webgame/engine.js —
+            # a UI web deduplica o numero flutuante de LifeChanged contra o
+            # DamageDealt "gemeo" que acabou de aparecer, e só funciona
+            # nessa ordem (o listener de FX ainda não existe aqui em Python,
+            # mas a ordem dos dois eventos é parte do contrato espelhado).
             self.bus.publish(DamageDealt(alvo=None, alvo_player=defensor_player, quantidade=dano, origem="ataque"))
+            self.bus.publish(LifeChanged(player_id=defensor_player, delta=-dano, total=ps.vida))
             _emitir_resolvido()
             return
 

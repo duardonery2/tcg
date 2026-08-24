@@ -334,8 +334,12 @@ TCG.resolverAtaque = function resolverAtaque(game, atacantePlayer, atacante, def
   if (defensor === null) {
     const ps = game.players[defensorPlayer];
     ps.vida = Math.max(ps.vida - dano, 0);
-    game.bus.emit("vidaAlterada", { playerId: defensorPlayer, delta: -dano, total: ps.vida });
+    // danoCausado ANTES de vidaAlterada: o listener de FX (ui.js) so consegue
+    // deduplicar o numero flutuante ("gemeo direto") se ja souber do
+    // danoCausado quando vidaAlterada chegar — na ordem trocada os dois
+    // emitem animacao, dobrando o numero na tela.
     game.bus.emit("danoCausado", { alvo: null, alvoPlayer: defensorPlayer, quantidade: dano, origem: "ataque" });
+    game.bus.emit("vidaAlterada", { playerId: defensorPlayer, delta: -dano, total: ps.vida });
     game.bus.emit("ataqueResolvido", { atacantePlayer, atacante, defensorPlayer, defensor });
     TCG.checarFimDeJogo(game);
     return;

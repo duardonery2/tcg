@@ -56,8 +56,11 @@ TCG.danoCombatente = function danoCombatente(game, carta, quantidade, origem = "
 TCG.danoJogador = function danoJogador(game, playerId, quantidade, origem = "") {
   const ps = game.players[playerId];
   ps.vida = Math.max(ps.vida - quantidade, 0);
-  game.bus.emit("vidaAlterada", { playerId, delta: -quantidade, total: ps.vida });
+  // danoCausado ANTES de vidaAlterada — mesma razao do TCG.resolverAtaque em
+  // engine.js: e o que deixa o listener de FX (ui.js) deduplicar o numero
+  // flutuante em vez de mostrar os dois.
   game.bus.emit("danoCausado", { alvo: null, alvoPlayer: playerId, quantidade, origem });
+  game.bus.emit("vidaAlterada", { playerId, delta: -quantidade, total: ps.vida });
 };
 
 TCG.destruir = function destruir(game, carta, motivo = "") {
