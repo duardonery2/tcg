@@ -136,11 +136,11 @@ def testar_estado_inicial(browser):
     page.wait_for_timeout(200)
 
     estado = page.evaluate("() => TCG.estado(window.game)")
-    # a Fase de Saque e so compra automatica e e pulada sozinha pra quem esta
-    # jogando localmente (sem decisao nela, sem exigir clique) — isso ja
-    # avança de verdade pra Fase de Invocação, que credita os 2 de Mana por
-    # turno (5 iniciais + 2 = 7), mesmo no 1o turno da partida.
-    assert estado["jogadores"]["1"]["mana"] == 7, estado
+    # a Fase de Saque e so compra+mana automaticos e e pulada sozinha pra
+    # quem esta jogando localmente (sem decisao nela, sem exigir clique) —
+    # mas o 1o turno de CADA jogador nao ganha o bonus de mana (ja comeca
+    # com a Mana inicial), entao continua em 5 aqui.
+    assert estado["jogadores"]["1"]["mana"] == 5, estado
     assert len(estado["jogadores"]["1"]["mao"]) == 4, estado
     assert estado["tabuleiro"]["1"]["monstro"] is None, estado
     assert estado["fase"] == "INVOCACAO", estado

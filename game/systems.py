@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Systems de regra geral (nao ligados a uma carta especifica):
-- ResourceSystem: compra na entrada da Fase de Saque, mana na entrada da
-  Fase de Invocacao (GAME_DESIGN.md).
+- ResourceSystem: compra + mana na entrada da Fase de Saque (exceto o
+  primeiro turno de cada jogador, que ja comeca com a Mana inicial).
 - CombatSystem: resolve um ataque (vantagem elemental + POW vs RES).
 - DestructionSystem: move uma carta pro destino certo e avisa geral.
 """
@@ -10,7 +10,7 @@ from __future__ import annotations
 from .components import (
     AttackNegated, CardInfo, CombatStats, DamageReflected, DanoDobradoContraMonstro,
     Elemento, ElementoOverride, Fase, IgnoraFraquezaElemental, Location,
-    PlayerState, Tipo, VANTAGEM_ELEMENTAL, Zona,
+    PlayerState, Tipo, TurnState, VANTAGEM_ELEMENTAL, Zona,
 )
 from .deck import Deck, DeckEmptyError
 from .ecs import System, World
@@ -24,8 +24,11 @@ MANA_POR_TURNO = 2
 
 
 class ResourceSystem(System):
-    """Fase de Saque: compra 1 carta do Baralho Arcano.
-    Fase de Invocacao: credita 2 de Mana na reserva do jogador da vez."""
+    """Fase de Saque: compra 1 carta do Baralho Arcano e credita 2 de Mana
+    na reserva do jogador da vez — exceto no PRIMEIRO turno de cada
+    jogador (eles já começam com MANA_INICIAL, sem bônus adicional nessa
+    primeira vez). Com N jogadores em rodízio, os primeiros N números de
+    turno correspondem exatamente ao primeiro turno de cada um."""
 
     def __init__(self, bus: EventBus, baralhos: dict[int, Deck], players: dict[int, PlayerState]):
         self.baralhos = baralhos
@@ -38,20 +41,18 @@ class ResourceSystem(System):
         self._world_ref = world
 
     def _on_phase_changed(self, event: PhaseChanged) -> None:
-        if self._world_ref is None:
+        if event.fase_nova is not Fase.SAQUE or self._world_ref is None:
             return
-        if event.fase_nova is Fase.INVOCACAO:
-            player_id = event.player_id
-            ps = self.players[player_id]
-            ps.mana += MANA_POR_TURNO
-            self.bus.publish(ManaChanged(player_id=player_id, delta=MANA_POR_TURNO, total=ps.mana))
-            return
-        if event.fase_nova is not Fase.SAQUE:
-            return
-
         world = self._world_ref
         player_id = event.player_id
         ps = self.players[player_id]
+
+        turn_row = world.single(TurnState)
+        numero_turno = turn_row[1].numero_turno if turn_row else None
+        primeiro_turno_do_jogador = numero_turno is not None and numero_turno <= len(self.players)
+        if not primeiro_turno_do_jogador:
+            ps.mana += MANA_POR_TURNO
+            self.bus.publish(ManaChanged(player_id=player_id, delta=MANA_POR_TURNO, total=ps.mana))
 
         baralho = self.baralhos[player_id]
         try:

@@ -302,32 +302,53 @@ TCG.avancarFase = function avancarFase(game) {
   const anterior = game.fase;
   let jogadorDoTurnoQueEntra = game.jogadorDaVez;
 
+  let novaFase;
   if (idx < ORDEM_FASES.length - 1) {
-    game.fase = ORDEM_FASES[idx + 1];
+    novaFase = ORDEM_FASES[idx + 1];
   } else {
     const i = game.jogadores.indexOf(game.jogadorDaVez);
     game.jogadorDaVez = game.jogadores[(i + 1) % game.jogadores.length];
     game.turno += 1;
-    game.fase = "SAQUE";
+    novaFase = "SAQUE";
     jogadorDoTurnoQueEntra = game.jogadorDaVez;
   }
+  game.fase = novaFase;
+  // snapshot do turno DESTA transição — só importa pra saber se é o
+  // primeiro turno de quem está entrando em SAQUE (ver abaixo); congelado
+  // aqui pelo mesmo motivo de `novaFase" (comentário logo abaixo).
+  const turnoDestaTransicao = game.turno;
 
-  game.bus.emit("faseAlterada", { playerId: game.jogadorDaVez, faseAnterior: anterior, faseNova: game.fase });
+  game.bus.emit("faseAlterada", { playerId: game.jogadorDaVez, faseAnterior: anterior, faseNova: novaFase });
 
-  if (game.fase === "SAQUE") {
+  // A PARTIR DAQUI usa `novaFase` (o valor que ESTA chamada produziu), não
+  // `game.fase` de novo — um listener de "faseAlterada" pode ter chamado
+  // avancarFase RECURSIVAMENTE de dentro do emit acima (ex.: o auto-skip da
+  // Fase de Saque em ui.js, quando o turno do bot termina e cai direto na
+  // Saque do jogador local, que se auto-pula na hora). Se essa chamada
+  // aninhada já tiver avançado `game.fase` de novo antes do emit acima
+  // retornar, reler `game.fase` aqui faria a lógica de "quem acabou de
+  // entrar nesta fase" (mana, compra, passivos, expirar buffs) ser
+  // silenciosamente pulada — foi exatamente isso que aconteceu até esta
+  // correção: o jogador local perdia a compra E a mana do turno toda vez
+  // que o turno anterior era do bot.
+  if (novaFase === "SAQUE") {
     zerarFlagsDeTurno(game);
+    // +2 de Mana por turno, exceto no PRIMEIRO turno de cada jogador (eles
+    // já começam com MANA_INICIAL, sem bônus adicional nessa primeira vez).
+    // Com N jogadores em rodízio, os primeiros N números de turno
+    // correspondem exatamente ao primeiro turno de cada um. Espelha
+    // ResourceSystem em game/systems.py.
+    if (turnoDestaTransicao > game.jogadores.length) {
+      const ps = game.players[jogadorDoTurnoQueEntra];
+      ps.mana += TCG.MANA_POR_TURNO;
+      game.bus.emit("manaAlterada", { playerId: jogadorDoTurnoQueEntra, delta: TCG.MANA_POR_TURNO, total: ps.mana });
+    }
     TCG.comprar(game, jogadorDoTurnoQueEntra, 1, "turno");
-    if (anterior === "FINAL") game.bus.emit("turnoIniciado", { playerId: game.jogadorDaVez, numeroTurno: game.turno });
+    if (anterior === "FINAL") game.bus.emit("turnoIniciado", { playerId: jogadorDoTurnoQueEntra, numeroTurno: turnoDestaTransicao });
   }
 
-  if (game.fase === "INVOCACAO") {
-    const ps = game.players[jogadorDoTurnoQueEntra];
-    ps.mana += TCG.MANA_POR_TURNO;
-    game.bus.emit("manaAlterada", { playerId: jogadorDoTurnoQueEntra, delta: TCG.MANA_POR_TURNO, total: ps.mana });
-  }
-
-  if (game.fase === "PRINCIPAL") TCG.aplicarPassivos(game);
-  if (game.fase === "FINAL") expirarBuffsDeFimDeTurno(game);
+  if (novaFase === "PRINCIPAL") TCG.aplicarPassivos(game);
+  if (novaFase === "FINAL") expirarBuffsDeFimDeTurno(game);
 
   TCG.checarFimDeJogo(game);
   return game.fase;
