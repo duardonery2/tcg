@@ -427,6 +427,11 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   function rectPilha(playerId, chave) { return rectDe(`#${containerIdDe(playerId)} [data-pilha="${chave}"] .slot`); }
   function rectMonstro(playerId) { return rectDe(`#${containerIdDe(playerId)} .linha-monstro .slot`); }
   function rectLinhaMagia(playerId) { return rectDe(`#${containerIdDe(playerId)} .linha-magia`); }
+  // um slot do TAMANHO de uma carta dentro da linha de magia (não a linha
+  // inteira, que esticaria uma revelação de Maldição) — usado quando
+  // elCartaAtual não tem a carta mapeada (Maldição do OPONENTE, nunca
+  // exposta em cartaPreview antes de revelar — ver elSlot/renderLado).
+  function rectSlotDeMagia(playerId) { return rectDe(`#${containerIdDe(playerId)} .linha-magia .slot`); }
   function rectInfoLado(playerId) { return rectDe(`#${containerIdDe(playerId)} .info-lado`); }
   function rectMaoLocal() { return rectDe("#mao-jogador"); }
   // destino da animação de compra: um retângulo do TAMANHO de uma carta
@@ -532,6 +537,53 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     fxRemoverDepois(div, delayMs + 420);
   }
 
+  // Revelação de Maldição: um flip 3D de verdade (verso -> arte real), não
+  // só um flash — é o momento mais dramático de reagir a uma Maldição
+  // setada, merece uma animação própria em vez de reaproveitar o anel de
+  // destruição com outra cor.
+  function fxSpawnFlip(rect, imgSrc, delayMs, duracaoMs = 620) {
+    if (!rect || !imgSrc) return;
+    const flip = document.createElement("div");
+    flip.className = "fx-flip";
+    flip.style.left = `${rect.left}px`;
+    flip.style.top = `${rect.top}px`;
+    flip.style.width = `${rect.width}px`;
+    flip.style.height = `${rect.height}px`;
+    flip.style.setProperty("--fx-atraso", `${delayMs}ms`);
+    flip.style.setProperty("--fx-duracao", `${duracaoMs}ms`);
+    const interior = document.createElement("div");
+    interior.className = "fx-flip-interior";
+    const verso = document.createElement("div");
+    verso.className = "fx-flip-verso";
+    const frente = document.createElement("div");
+    frente.className = "fx-flip-frente";
+    const img = document.createElement("img");
+    img.src = imgSrc;
+    frente.appendChild(img);
+    interior.appendChild(verso);
+    interior.appendChild(frente);
+    flip.appendChild(interior);
+    fxLayer.appendChild(flip);
+    fxRemoverDepois(flip, delayMs + duracaoMs);
+  }
+
+  // Cura: um brilho suave que se expande, bem diferente do pulso seco de
+  // buff/dano (fx-pulso) — a cura é reconfortante, não um impacto.
+  function fxSpawnBloom(rect, delayMs, duracaoMs = 750) {
+    if (!rect) return;
+    const div = document.createElement("div");
+    div.className = "fx-cura-bloom";
+    const pad = Math.max(rect.width, rect.height) * 0.35;
+    div.style.left = `${rect.left - pad / 2}px`;
+    div.style.top = `${rect.top - pad / 2}px`;
+    div.style.width = `${rect.width + pad}px`;
+    div.style.height = `${rect.height + pad}px`;
+    div.style.setProperty("--fx-atraso", `${delayMs}ms`);
+    div.style.setProperty("--fx-duracao", `${duracaoMs}ms`);
+    fxLayer.appendChild(div);
+    fxRemoverDepois(div, delayMs + duracaoMs);
+  }
+
   // combatenteInvocado: voa do Panteão até o slot de Monstro — o slot já
   // existe vazio no esqueleto do tabuleiro, não precisa esperar o próximo render.
   game.bus.on("combatenteInvocado", (e) => {
@@ -634,21 +686,33 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   });
 
   // maldicaoAtivada: nesse momento a carta já virou pra cima (pública pros
-  // dois lados), então mostrar a arte real não vaza nada mais.
+  // dois lados), então mostrar a arte real não vaza nada mais — um flip 3D
+  // de verdade (verso -> arte), não só um flash. `elCartaAtual` só tem essa
+  // carta mapeada se for a Maldição do PRÓPRIO jogador local (cartaPreview,
+  // ver elSlot/renderLado); pra Maldição do oponente, cai num slot do
+  // tamanho certo dentro da linha de magia dele (rectSlotDeMagia).
   game.bus.on("maldicaoAtivada", (e) => {
     const delay = proximoAtraso();
     const elemento = elCartaAtual.get(e.carta);
-    fxSpawnAnel(elemento ? elemento.getBoundingClientRect() : rectLinhaMagia(e.playerId), "destaque", delay);
+    const rect = elemento ? elemento.getBoundingClientRect() : rectSlotDeMagia(e.playerId);
+    fxSpawnFlip(rect, e.carta.arquivo, delay);
   });
 
   // statusAlterado (buff/debuff/cura — ver TCG.buff/TCG.curar): sinal
   // genérico, cobre efeitos de Habilidade/Domínio/Maldição sem precisar
   // saber qual carta causou (frequentemente é uma carta DIFERENTE da
-  // nomeada no evento que disparou o efeito).
+  // nomeada no evento que disparou o efeito). Cura ganha um tratamento
+  // PRÓPRIO (brilho que se expande) em vez do pulso seco de buff/dano —
+  // reconfortante, não um impacto.
   game.bus.on("statusAlterado", (e) => {
     const elemento = elCartaAtual.get(e.carta);
     if (!elemento) return;
     const delay = proximoAtraso(70);
+    if (e.origem === "cura") {
+      fxSpawnBloom(elemento.getBoundingClientRect(), delay);
+      fxSpawnNumero(elemento.getBoundingClientRect(), `+${e.delta}`, "cura", delay);
+      return;
+    }
     const tipo = e.delta > 0 ? "cura" : "dano";
     fxPulso(elemento, tipo, delay);
     fxSpawnNumero(elemento.getBoundingClientRect(), `${e.delta >= 0 ? "+" : ""}${e.delta}`, tipo, delay);
