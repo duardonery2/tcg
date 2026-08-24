@@ -118,7 +118,7 @@ TCG.criarJogo = function criarJogo({ seed = null, nomes = { 1: "Você", 2: "Opon
     jogadores,
     turno: 1,
     jogadorDaVez: 1,
-    fase: "RECURSO",
+    fase: "SAQUE",
     players: {},
     panteoes: {},
     baralhos: {},
@@ -163,7 +163,7 @@ TCG.dono = function dono(game, carta) {
 // ---- comprar / destruir (pontos unicos) -----------------------------------
 
 // `origem` identifica DE ONDE veio a compra ("turno" = compra automática da
-// Fase de Recurso, "efeito" = Encantamento/Habilidade tipo Tomo do Oráculo)
+// Fase de Saque, "efeito" = Encantamento/Habilidade tipo Tomo do Oráculo)
 // — alguns gatilhos (Nevoeiro do Pânico, Mente Fraturada) só disparam pra um
 // dos dois casos, e sem essa tag não daria pra diferenciar no evento.
 TCG.comprar = function comprar(game, playerId, n, origem = "efeito") {
@@ -252,7 +252,7 @@ TCG.destroyCard = function destroyCard(game, carta, motivo = "") {
 
 // ---- fase / turno -----------------------------------------------------
 
-const ORDEM_FASES = ["RECURSO", "INVOCACAO", "TATICA", "COMBATE"];
+const ORDEM_FASES = ["SAQUE", "INVOCACAO", "PRINCIPAL", "BATALHA", "FINAL"];
 
 TCG.iniciarJogo = function iniciarJogo(game) {
   if (game._iniciado) return;
@@ -261,7 +261,8 @@ TCG.iniciarJogo = function iniciarJogo(game) {
   game._iniciado = true;
 };
 
-function upkeepInicioDeTurno(game) {
+// Reseta "Habilidade usada neste turno" — turno novo, direito renovado.
+function zerarFlagsDeTurno(game) {
   for (const pid of game.jogadores) {
     const lado = game.board[pid];
     if (lado.monstro) {
@@ -270,14 +271,14 @@ function upkeepInicioDeTurno(game) {
     }
     for (const c of lado.magia) if (c) c.habilidadeUsadaNesteTurno = false;
   }
-  // expira StatusEffects "neste turno"/"ate fim de turno" dos DOIS lados,
-  // toda vez que QUALQUER jogador comeca uma Fase de Recurso — "neste turno"
-  // significa ate o FIM do turno de quem ativou, que e exatamente agora (a
-  // Recurso que vem logo em seguida, seja de quem for), nao "ate o proprio
-  // dono comecar o turno dele de novo" (isso deixaria o buff vivo durante o
-  // turno INTEIRO do oponente, um turno inteiro a mais do que devia).
-  // Espelha UpkeepSystem em game/phases.py, que ja expira globalmente
-  // (world.query(StatusEffects) sem filtrar por dono).
+}
+
+// Expira StatusEffects "neste turno"/"ate fim de turno" dos DOIS lados, na
+// Fase Final de quem quer que esteja jogando — "neste turno" significa até
+// o fim do turno ATUAL, não importa em qual combatente o efeito está (ex.:
+// Vínculo Sombrio, que a dona da Maldição aplica no combatente do
+// OPONENTE). Espelha UpkeepSystem em game/phases.py.
+function expirarBuffsDeFimDeTurno(game) {
   for (const pid of game.jogadores) {
     const lado = game.board[pid];
     const alvos = [lado.monstro, ...lado.magia].filter(Boolean);
@@ -302,22 +303,23 @@ TCG.avancarFase = function avancarFase(game) {
     const i = game.jogadores.indexOf(game.jogadorDaVez);
     game.jogadorDaVez = game.jogadores[(i + 1) % game.jogadores.length];
     game.turno += 1;
-    game.fase = "RECURSO";
+    game.fase = "SAQUE";
     jogadorDoTurnoQueEntra = game.jogadorDaVez;
   }
 
   game.bus.emit("faseAlterada", { playerId: game.jogadorDaVez, faseAnterior: anterior, faseNova: game.fase });
 
-  if (game.fase === "RECURSO") {
-    upkeepInicioDeTurno(game);
+  if (game.fase === "SAQUE") {
+    zerarFlagsDeTurno(game);
     const ps = game.players[jogadorDoTurnoQueEntra];
     ps.mana += TCG.MANA_POR_TURNO;
     game.bus.emit("manaAlterada", { playerId: jogadorDoTurnoQueEntra, delta: TCG.MANA_POR_TURNO, total: ps.mana });
     TCG.comprar(game, jogadorDoTurnoQueEntra, 1, "turno");
-    if (anterior === "COMBATE") game.bus.emit("turnoIniciado", { playerId: game.jogadorDaVez, numeroTurno: game.turno });
+    if (anterior === "FINAL") game.bus.emit("turnoIniciado", { playerId: game.jogadorDaVez, numeroTurno: game.turno });
   }
 
-  if (game.fase === "TATICA") TCG.aplicarPassivos(game);
+  if (game.fase === "PRINCIPAL") TCG.aplicarPassivos(game);
+  if (game.fase === "FINAL") expirarBuffsDeFimDeTurno(game);
 
   TCG.checarFimDeJogo(game);
   return game.fase;

@@ -4,7 +4,7 @@ comprada da sua lista. O Panteao (Pantheon) e um Deck separado — mesma
 interface, lista diferente (so os 5 Combatentes do jogador).
 
 Escolha de design: `draw_random()` e o mecanismo de COMPRA automatica do
-Baralho Arcano (Fase de Recurso). Invocar um combatente especifico do
+Baralho Arcano (Fase de Saque). Invocar um combatente especifico do
 Panteao, por outro lado, e uma ESCOLHA do jogador — isso passa pelo sistema
 de selecao (events.SelectionRequested), nao por `draw_random()`. O Panteao
 ainda e um Deck (mesma classe) porque semanticamente e "uma lista da qual se

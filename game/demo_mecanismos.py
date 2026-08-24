@@ -78,10 +78,10 @@ def main() -> None:
 
     # --- 3) Domínio, Encantamento, Maldição ---
     print("\n=== 3) Domínio / Encantamento / Maldição ===")
-    ctrl.avancar_fase()  # RECURSO -> INVOCACAO
+    ctrl.avancar_fase()  # SAQUE -> INVOCACAO
     algum = ctrl.panteoes[1].restantes()[0]
     ctrl.submeter_acao(SummonAction(player_id=1, card=algum))
-    ctrl.avancar_fase()  # INVOCACAO -> TATICA
+    ctrl.avancar_fase()  # INVOCACAO -> PRINCIPAL
 
     ctrl.players[1].mana = 10  # garante mana pra ativar Domínio + Encantamento neste teste
     dominio = achar_na_mao(ctrl, 1, Tipo.DOMINIO)
@@ -93,8 +93,8 @@ def main() -> None:
     if encantamento:
         ctrl.submeter_acao(PlayEnchantmentAction(player_id=1, card=encantamento))
 
-    # avanca o resto do turno de J1 ate chegar na Fase Tática de J2
-    while ctrl.fase_atual().jogador_da_vez != 2 or ctrl.fase_atual().fase.name != "TATICA":
+    # avanca o resto do turno de J1 ate chegar na Fase Principal de J2
+    while ctrl.fase_atual().jogador_da_vez != 2 or ctrl.fase_atual().fase.name != "PRINCIPAL":
         ctrl.avancar_fase()
 
     maldicao = achar_na_mao(ctrl, 2, Tipo.MALDICAO)

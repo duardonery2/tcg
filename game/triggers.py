@@ -11,7 +11,7 @@ onde "Quando X"/"Sempre que X" são resolvidos — nada bespoke espalhado.
 
 Passivos: um Domínio "enquanto ativo" registra um efeito PASSIVO
 (`registrar_passivo`), reaplicado do zero — limpa e reaplica — a cada Fase
-Tática de QUALQUER jogador (`aplicar_passivos`, chamado por
+Principal de QUALQUER jogador (`aplicar_passivos`, chamado por
 `GameController.avancar_fase`), e removido (com limpeza) assim que a
 carta-fonte sai de campo, pelo único ponto de destruição
 (`DestructionSystem.destruir`).

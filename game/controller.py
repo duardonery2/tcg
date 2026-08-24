@@ -100,7 +100,7 @@ class GameController:
 
     def avancar_fase(self):
         ts = self.fase_system.avancar(self.world)
-        if ts.fase is Fase.TATICA:
+        if ts.fase is Fase.PRINCIPAL:
             from .triggers import aplicar_passivos
             aplicar_passivos(self)
         self._checar_fim_de_jogo()

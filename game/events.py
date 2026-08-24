@@ -53,7 +53,7 @@ class LifeChanged(Event):
 class CardDrawn(Event):
     player_id: int
     card: int
-    # "turno" = compra automática da Fase de Recurso, "efeito" = Encantamento/
+    # "turno" = compra automática da Fase de Saque, "efeito" = Encantamento/
     # Habilidade tipo Tomo do Oráculo — alguns gatilhos (Nevoeiro do Pânico,
     # Mente Fraturada) só disparam pra um dos dois casos (ver triggers.py).
     origem: str = "efeito"

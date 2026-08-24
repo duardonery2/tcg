@@ -23,7 +23,7 @@ TCG.buff = function buff(game, carta, atributo, magnitude, duracao = "PERMANENTE
   // DIFERENTE da carta nomeada no evento que disparou, ex.: Pacto de
   // Sangue nomeia o próprio Encantamento, não o combatente buffado).
   // Suprimido durante TCG.aplicarPassivos (ver triggers.js) — senão TODO
-  // Domínio passivo piscaria a cada Fase Tática, mesmo sem nada mudar.
+  // Domínio passivo piscaria a cada Fase Principal, mesmo sem nada mudar.
   if (!game._reaplicandoPassivos) {
     const delta = carta[campo] - antes;
     if (delta !== 0) game.bus.emit("statusAlterado", { carta, atributo, delta, origem });
@@ -120,7 +120,7 @@ function reg(nome, fn) { TCG.EFFECTS[nome] = fn; }
 function regDestroy(nome, fn) { TCG.EFFECTS_ON_DESTROY[nome] = fn; }
 
 // Efeito PASSIVO ("enquanto ativo..."): `aplicarFn` roda já na ativação e de
-// novo a cada Fase Tática (limpa-e-reaplica, ver TCG.aplicarPassivos), até a
+// novo a cada Fase Principal (limpa-e-reaplica, ver TCG.aplicarPassivos), até a
 // carta-fonte sair de campo. `limparFn` (opcional) desfaz o que `aplicarFn`
 // fez — o padrão remove os StatusEffects com origem = nome da carta, o que
 // cobre a maioria dos casos (buff de atributo); passe um `limparFn` próprio
@@ -279,7 +279,7 @@ reg("Quimera", (game, playerId, carta) => {
 //
 // Todos os 10 Domínios têm efeito PASSIVO ("enquanto ativo...") e/ou um
 // GATILHO ("Quando"/"Sempre que"/"No início do turno") — ver triggers.js.
-// Passivos são reaplicados do zero a cada Fase Tática (regPassivo) e somem
+// Passivos são reaplicados do zero a cada Fase Principal (regPassivo) e somem
 // quando o Domínio é destruído; gatilhos ficam registrados esperando o
 // evento certo, e também são removidos automaticamente na destruição
 // (TCG.destroyCard chama TCG.removerPassivosDe/removerTriggersDe).
@@ -686,7 +686,7 @@ reg("Nevoeiro do Pânico", (game, playerId, carta, evento) => {
   ps.mao.push(doFundo);
   game.bus.emit("cartaComprada", { playerId: oponente, carta: doFundo, origem: "efeito" });
 });
-// "a carta recém comprada NO TURNO" = a compra automática da Fase de Recurso
+// "a carta recém comprada NO TURNO" = a compra automática da Fase de Saque
 // (origem "turno" — ver TCG.comprar), não uma compra de efeito.
 regGatilhoMaldicao("Nevoeiro do Pânico", "cartaComprada", (evento, game, donoId) => evento.playerId !== donoId && evento.origem === "turno");
 

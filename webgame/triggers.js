@@ -10,7 +10,7 @@
 //
 // Passivos: um Domínio "enquanto ativo" registra um efeito PASSIVO
 // (TCG.registrarPassivo), reaplicado do zero — limpa e reaplica — a cada
-// Fase Tática de QUALQUER jogador (TCG.aplicarPassivos, chamado por
+// Fase Principal de QUALQUER jogador (TCG.aplicarPassivos, chamado por
 // TCG.avancarFase), e removido (com limpeza) assim que a carta-fonte sai de
 // campo, pelo único ponto de destruição (TCG.destroyCard).
 var TCG = window.TCG || (window.TCG = {});
@@ -67,7 +67,7 @@ TCG.removerPassivosDe = function removerPassivosDe(game, carta) {
 };
 
 TCG.aplicarPassivos = function aplicarPassivos(game) {
-  // limpa-e-reaplica roda em TODA Fase Tática, mesmo quando nada mudou —
+  // limpa-e-reaplica roda em TODA Fase Principal, mesmo quando nada mudou —
   // suprime o evento "statusAlterado" (ver TCG.buff, effects.js) durante
   // esse ciclo pra não piscar um flash de UI toda vez sem nenhuma mudança
   // visível de verdade.

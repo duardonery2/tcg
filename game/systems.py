@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Systems de regra geral (nao ligados a uma carta especifica):
-- ResourceSystem: compra + mana no inicio da Fase de Recurso.
+- ResourceSystem: compra + mana no inicio da Fase de Saque.
 - CombatSystem: resolve um ataque (vantagem elemental + POW vs RES).
 - DestructionSystem: move uma carta pro destino certo e avisa geral.
 """
@@ -23,7 +23,7 @@ MANA_POR_TURNO = 2
 
 
 class ResourceSystem(System):
-    """Fase de Recurso e Compra: compra 1 carta do Baralho Arcano + 2 de Mana."""
+    """Fase de Saque: compra 1 carta do Baralho Arcano + 2 de Mana."""
 
     def __init__(self, bus: EventBus, baralhos: dict[int, Deck], players: dict[int, PlayerState]):
         self.baralhos = baralhos
@@ -36,7 +36,7 @@ class ResourceSystem(System):
         self._world_ref = world
 
     def _on_phase_changed(self, event: PhaseChanged) -> None:
-        if event.fase_nova is not Fase.RECURSO or self._world_ref is None:
+        if event.fase_nova is not Fase.SAQUE or self._world_ref is None:
             return
         world = self._world_ref
         player_id = event.player_id

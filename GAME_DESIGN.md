@@ -20,12 +20,15 @@ Cada duelista entra na arena portando dois conjuntos distintos de forças:
 
 ## A Estrutura do Turno
 
-O duelo ocorre em turnos sequenciais, divididos rigorosamente em quatro fases:
+O duelo ocorre em turnos sequenciais, divididos rigorosamente em cinco fases:
 
-1. **Fase de Recurso e Compra:** O jogador da vez compra 1 carta do Baralho Arcano e recebe 2 de Mana para sua reserva.
+1. **Fase de Saque:** O jogador da vez compra 1 carta do Baralho Arcano e recebe 2 de Mana para sua reserva. Não há decisão nenhuma aqui — a fase passa direto para a de Invocação assim que compra e mana são creditados.
 2. **Fase de Invocação:** O feiticeiro pode pagar o custo necessário para trazer um combatente do Panteão para a arena.
-3. **Fase Tática:** Momento de usar magias. Pode-se ativar um **Domínio** (destruindo o domínio anterior, pois só pode haver um ativo na mesa), jogar **Encantamentos** da mão ou baixar **Maldições** viradas para baixo (armadilhas ativadas apenas no turno do inimigo).
-4. **Fase de Combate:** O jogador declara um ataque, confrontando a Habilidade de Combate do seu combatente contra a Resistência do inimigo.
+3. **Fase Principal:** Momento de usar magias. Pode-se ativar um **Domínio** (destruindo o domínio anterior, pois só pode haver um ativo na mesa), jogar **Encantamentos** da mão ou baixar **Maldições** viradas para baixo (armadilhas ativadas apenas no turno do inimigo).
+4. **Fase de Batalha:** O jogador declara um ataque, confrontando a Habilidade de Combate do seu combatente contra a Resistência do inimigo.
+5. **Fase Final:** Fase de limpeza, sem ação do jogador. Todo efeito temporário com duração "neste turno"/"até fim de turno" (buffs e debuffs de Habilidade, Encantamento ou Maldição, dos dois lados do campo) expira exatamente aqui — ao fim do turno em que foi aplicado, nunca um turno inteiro depois. Terminada a Fase Final, a vez passa ao oponente e o turno dele começa de novo pela Fase de Saque.
+
+Cada troca de fase é, ela mesma, um evento de jogo (`faseAlterada`/`PhaseChanged`) — cartas podem registrar gatilhos que reagem à entrada numa fase específica, do mesmo jeito que reagem a qualquer outro evento (destruição, ataque declarado, etc.).
 
 ---
 
@@ -33,7 +36,7 @@ O duelo ocorre em turnos sequenciais, divididos rigorosamente em quatro fases:
 
 Heróis e Monstros invocados têm uma Habilidade especial impressa na carta, mas ela não é automática: para ativá-la, o feiticeiro precisa pagar o **Custo de Habilidade** em Mana da reserva (mostrado no losango cinza-escuro ao lado do texto de efeito — o mesmo estilo do círculo de custo de invocação, só que em formato de losango). Esse custo é adicional ao custo de invocação já pago para trazer o combatente ao campo.
 
-* Cada Habilidade pode ser ativada **uma vez por turno**, durante a Fase Tática ou a Fase de Combate (antes de declarar o ataque).
+* Cada Habilidade pode ser ativada **uma vez por turno**, durante a Fase Principal ou a Fase de Batalha (antes de declarar o ataque).
 * Pagar o Custo de Habilidade não consome a ação de invocar nem a de atacar — são gastos independentes da mesma reserva de Mana.
 * Combatentes sem Mana suficiente na reserva do feiticeiro simplesmente não podem ativar sua Habilidade naquele turno (ela continua em campo, só a ativação fica indisponível).
 
@@ -78,12 +81,12 @@ As 60 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comu
 | Ação | Quando | Custo | Exemplo de carta |
 |---|---|---|---|
 | Invocar um Combatente | Fase de Invocação | Custo de Mana da carta | qualquer Herói/Monstro |
-| Ativar a Habilidade de um Combatente ("Habilidade de Mana") | Fase Tática ou de Combate, 1x/turno | Custo de Habilidade (losango) | Rei Arthur, Surtur, ... |
-| Ativar um Domínio | Fase Tática | Custo de Mana da carta (destrói o Domínio anterior) | Vulcão Primordial, Valhalla |
-| Jogar um Encantamento | Fase Tática | Custo de Mana da carta | Tomo do Oráculo, Pacto de Sangue |
-| Baixar uma Maldição virada para baixo | Fase Tática | Nenhum (grátis) | qualquer Maldição |
+| Ativar a Habilidade de um Combatente ("Habilidade de Mana") | Fase Principal ou de Batalha, 1x/turno | Custo de Habilidade (losango) | Rei Arthur, Surtur, ... |
+| Ativar um Domínio | Fase Principal | Custo de Mana da carta (destrói o Domínio anterior) | Vulcão Primordial, Valhalla |
+| Jogar um Encantamento | Fase Principal | Custo de Mana da carta | Tomo do Oráculo, Pacto de Sangue |
+| Baixar uma Maldição virada para baixo | Fase Principal | Nenhum (grátis) | qualquer Maldição |
 | Revelar/ativar uma Maldição já setada | A qualquer momento no turno do oponente | Custo de Mana da carta | qualquer Maldição |
-| Declarar um ataque | Fase de Combate, 1x/turno por combatente, nunca no 1º turno da partida | — | — |
+| Declarar um ataque | Fase de Batalha, 1x/turno por combatente, nunca no 1º turno da partida | — | — |
 
 > **Maldição: o custo é pago na ativação, não ao baixar.** Setar uma Maldição virada para baixo é grátis — ela só cobra o Custo de Mana impresso na carta no momento em que é revelada/ativada. Isso significa que dá pra baixar uma Maldição mesmo sem mana nenhuma, mas se não houver mana disponível quando chegar a hora de ativá-la, a ativação falha (a carta continua virada para baixo em campo até haver mana ou até ser destruída por outro efeito).
 

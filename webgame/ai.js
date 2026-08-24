@@ -16,16 +16,27 @@
 // rodaria por cima do modal antes do jogador responder.
 var TCG = window.TCG || (window.TCG = {});
 
+// A IA de teste "pensa" por um tempo fixo antes de CADA decisão (não antes de
+// cada avanço de fase automático) — dá tempo do jogador humano acompanhar o
+// que está acontecendo na tela em vez do turno inteiro resolver num piscar.
+TCG.IA_ATRASO_MS = 3000;
+
+function decidir(fn) {
+  setTimeout(fn, TCG.IA_ATRASO_MS);
+}
+
 function opcoesInvocar(game, aiId) {
   const ps = game.players[aiId];
   return TCG.Deck.restantes(game.panteoes[aiId]).filter((c) => c.custoMana <= ps.mana);
 }
 
 function decidirInvocar(game, aiId, continuar = () => {}) {
-  if (game.board[aiId].monstro !== null) { continuar(); return; }
-  const opcoes = opcoesInvocar(game, aiId);
-  if (!opcoes.length) { continuar(); return; }
-  TCG.acoes.invocar(game, aiId, game.rng.choice(opcoes), continuar);
+  decidir(() => {
+    if (game.board[aiId].monstro !== null) { continuar(); return; }
+    const opcoes = opcoesInvocar(game, aiId);
+    if (!opcoes.length) { continuar(); return; }
+    TCG.acoes.invocar(game, aiId, game.rng.choice(opcoes), continuar);
+  });
 }
 
 function opcoesFaseTatica(game, aiId) {
@@ -50,58 +61,65 @@ function opcoesFaseTatica(game, aiId) {
   return opcoes;
 }
 
-function decidirFaseTatica(game, aiId, continuar = () => {}) {
+function decidirFasePrincipal(game, aiId, continuar = () => {}) {
   // loop: sorteia entre as opcoes legais + "parar", ate parar ou esgotar —
-  // permite de 0 a N acoes no turno, de verdade aleatorio.
+  // permite de 0 a N acoes no turno, de verdade aleatorio. Cada iteracao e
+  // uma decisao nova, com seu proprio atraso.
   function iteracao(i) {
     if (i >= 20 || game.fimDeJogo) { continuar(); return; } // limite de seguranca, nao deveria nunca chegar perto
-    const opcoes = opcoesFaseTatica(game, aiId);
-    const escolha = game.rng.choice([...opcoes, { tipo: "parar" }]);
-    if (escolha.tipo === "parar") { continuar(); return; }
-    if (escolha.tipo === "jogar") {
-      TCG.acoes.jogarCartaDeCampo(game, aiId, escolha.carta); // Domínio/Encantamento/Maldição setada não são eventos monitorados por Maldição reativa
-      iteracao(i + 1);
-    } else if (escolha.tipo === "habilidade") {
-      TCG.acoes.ativarHabilidade(game, aiId, game.board[aiId].monstro, () => iteracao(i + 1));
-    }
+    decidir(() => {
+      const opcoes = opcoesFaseTatica(game, aiId);
+      const escolha = game.rng.choice([...opcoes, { tipo: "parar" }]);
+      if (escolha.tipo === "parar") { continuar(); return; }
+      if (escolha.tipo === "jogar") {
+        TCG.acoes.jogarCartaDeCampo(game, aiId, escolha.carta); // Domínio/Encantamento/Maldição setada não são eventos monitorados por Maldição reativa
+        iteracao(i + 1);
+      } else if (escolha.tipo === "habilidade") {
+        TCG.acoes.ativarHabilidade(game, aiId, game.board[aiId].monstro, () => iteracao(i + 1));
+      }
+    });
   }
   iteracao(0);
 }
 
-function decidirCombate(game, aiId, oponenteId, continuar = () => {}) {
+function decidirBatalha(game, aiId, oponenteId, continuar = () => {}) {
   if (game.fimDeJogo) { continuar(); return; }
   const lado = game.board[aiId];
   function depoisDaHabilidade() {
     if (game.fimDeJogo) { continuar(); return; }
-    if (lado.monstro) TCG.acoes.atacar(game, aiId, oponenteId, continuar);
-    else continuar();
+    decidir(() => {
+      if (lado.monstro) TCG.acoes.atacar(game, aiId, oponenteId, continuar);
+      else continuar();
+    });
   }
-  if (lado.monstro && lado.monstro.custoHabilidade != null && !lado.monstro.habilidadeUsadaNesteTurno
-      && lado.monstro.custoHabilidade <= game.players[aiId].mana && game.rng.random() < 0.5) {
-    TCG.acoes.ativarHabilidade(game, aiId, lado.monstro, depoisDaHabilidade);
-  } else {
-    depoisDaHabilidade();
-  }
+  decidir(() => {
+    if (lado.monstro && lado.monstro.custoHabilidade != null && !lado.monstro.habilidadeUsadaNesteTurno
+        && lado.monstro.custoHabilidade <= game.players[aiId].mana && game.rng.random() < 0.5) {
+      TCG.acoes.ativarHabilidade(game, aiId, lado.monstro, depoisDaHabilidade);
+    } else {
+      depoisDaHabilidade();
+    }
+  });
 }
 
 TCG.executarTurnoIA = function executarTurnoIA(game, aiId) {
   const oponenteId = TCG.oponenteDe(game, aiId);
 
   function depoisDeInvocar() {
-    TCG.acoes.avancarFase(game); // INVOCACAO -> TATICA
-    if (!game.fimDeJogo) decidirFaseTatica(game, aiId, depoisDeTatica);
-    else depoisDeTatica();
+    TCG.acoes.avancarFase(game); // INVOCACAO -> PRINCIPAL
+    if (!game.fimDeJogo) decidirFasePrincipal(game, aiId, depoisDePrincipal);
+    else depoisDePrincipal();
   }
-  function depoisDeTatica() {
-    TCG.acoes.avancarFase(game); // TATICA -> COMBATE
-    if (!game.fimDeJogo) decidirCombate(game, aiId, oponenteId, depoisDeCombate);
-    else depoisDeCombate();
+  function depoisDePrincipal() {
+    TCG.acoes.avancarFase(game); // PRINCIPAL -> BATALHA
+    if (!game.fimDeJogo) decidirBatalha(game, aiId, oponenteId, depoisDeBatalha);
+    else depoisDeBatalha();
   }
-  function depoisDeCombate() {
-    if (!game.fimDeJogo) TCG.acoes.terminarTurno(game); // COMBATE -> RECURSO do proximo jogador
+  function depoisDeBatalha() {
+    if (!game.fimDeJogo) TCG.acoes.terminarTurno(game); // BATALHA -> FINAL -> SAQUE do proximo jogador
   }
 
-  TCG.acoes.avancarFase(game); // RECURSO -> INVOCACAO
+  TCG.acoes.avancarFase(game); // SAQUE -> INVOCACAO
   if (!game.fimDeJogo) decidirInvocar(game, aiId, depoisDeInvocar);
   else depoisDeInvocar();
 };

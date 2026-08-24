@@ -86,7 +86,7 @@ class ActivateAbilityAction:
     card: int
 
     def executar(self, ctrl) -> None:
-        _exigir_fase(ctrl, self.player_id, Fase.TATICA, Fase.COMBATE)
+        _exigir_fase(ctrl, self.player_id, Fase.PRINCIPAL, Fase.BATALHA)
         lado = ctrl.board.lado(self.player_id)
         if lado.monstro != self.card:
             raise AcaoInvalida("Essa carta nao e o combatente ativo desse jogador.")
@@ -123,7 +123,7 @@ class ActivateDomainAction:
     slot: int | None = None
 
     def executar(self, ctrl) -> None:
-        _exigir_fase(ctrl, self.player_id, Fase.TATICA)
+        _exigir_fase(ctrl, self.player_id, Fase.PRINCIPAL)
         ps = ctrl.players[self.player_id]
         if self.card not in ps.mao:
             raise AcaoInvalida("Essa carta nao esta na mao desse jogador.")
@@ -169,7 +169,7 @@ class PlayEnchantmentAction:
     card: int
 
     def executar(self, ctrl) -> None:
-        _exigir_fase(ctrl, self.player_id, Fase.TATICA)
+        _exigir_fase(ctrl, self.player_id, Fase.PRINCIPAL)
         ps = ctrl.players[self.player_id]
         if self.card not in ps.mao:
             raise AcaoInvalida("Essa carta nao esta na mao desse jogador.")
@@ -196,7 +196,7 @@ class SetCurseAction:
     slot: int | None = None
 
     def executar(self, ctrl) -> None:
-        _exigir_fase(ctrl, self.player_id, Fase.TATICA)
+        _exigir_fase(ctrl, self.player_id, Fase.PRINCIPAL)
         ps = ctrl.players[self.player_id]
         if self.card not in ps.mao:
             raise AcaoInvalida("Essa carta nao esta na mao desse jogador.")
@@ -245,13 +245,13 @@ class ActivateSetCurseAction:
 
 @dataclass
 class DeclareAttackAction:
-    """Fase de Combate: confronta o combatente ativo contra o do oponente
+    """Fase de Batalha: confronta o combatente ativo contra o do oponente
     (ou os Pontos de Vida dele, se o campo estiver vazio)."""
     player_id: int
     oponente_id: int
 
     def executar(self, ctrl) -> None:
-        _exigir_fase(ctrl, self.player_id, Fase.COMBATE)
+        _exigir_fase(ctrl, self.player_id, Fase.BATALHA)
         atacante = ctrl.board.lado(self.player_id).monstro
         if atacante is None:
             raise AcaoInvalida("Nao ha combatente ativo pra atacar.")

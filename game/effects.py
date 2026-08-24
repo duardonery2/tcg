@@ -9,7 +9,7 @@ Efeitos com uma parte PASSIVA ("enquanto ativo...") ou de GATILHO
 ("Quando"/"Sempre que"/"No início do turno") usam `EFFECTS.registrar_passivo`
 ou `triggers.registrar_trigger` em vez de mutar o estado direto — ver
 `triggers.py` e a seção correspondente em `GAME_ENGINE.md`. Ex.: Trono de
-Camelot reaplica o bônus a cada Fase Tática e some quando o Domínio é
+Camelot reaplica o bônus a cada Fase Principal e some quando o Domínio é
 destruído; Jörmungandr registra um gatilho de dano recorrente no alvo;
 Caixa de Pandora dispara em `CardDestroyed` filtrado pelo dono, não na
 própria destruição (bug real corrigido por essa arquitetura).
@@ -215,7 +215,7 @@ class EffectRegistry:
 
     def registrar_passivo(self, nome: str, limpar: Callable | None = None):
         """Efeito PASSIVO ("enquanto ativo..."): `fn` roda já na ativação e
-        de novo a cada Fase Tática (limpa-e-reaplica, ver
+        de novo a cada Fase Principal (limpa-e-reaplica, ver
         triggers.aplicar_passivos), até a carta-fonte sair de campo. `limpar`
         (opcional) desfaz o que `fn` fez — o padrão remove os StatusEffects
         com origem = nome da carta; passe um `limpar` próprio quando o
@@ -329,7 +329,7 @@ def _(ctrl, player_id, card, evento=None):
     # disparar na hora que a Habilidade é ativada, e sim um gatilho de
     # morte: registra um trigger em CardDestroyed que só faz algo se a carta
     # destruída for o PRÓPRIO Cu Chulainn E se a vez ainda for do dono dele
-    # (Fase de Combate só acontece no turno de quem ataca, então se ainda é
+    # (Fase de Batalha só acontece no turno de quem ataca, então se ainda é
     # a vez dele, foi ELE quem atacou e morreu por dano refletido).
     from .triggers import registrar_trigger, remover_triggers_de
 
@@ -450,7 +450,7 @@ def _(ctrl, player_id, card, evento=None):
 #
 # Todos os 10 Domínios têm efeito PASSIVO ("enquanto ativo...") e/ou um
 # GATILHO ("Quando"/"Sempre que"/"No início do turno") — ver triggers.py.
-# Passivos são reaplicados do zero a cada Fase Tática (registrar_passivo) e
+# Passivos são reaplicados do zero a cada Fase Principal (registrar_passivo) e
 # somem quando o Domínio é destruído; gatilhos ficam registrados esperando o
 # evento certo, e também são removidos automaticamente na destruição
 # (DestructionSystem.destruir chama remover_passivos_de/remover_triggers_de).
@@ -1026,7 +1026,7 @@ def _(ctrl, player_id, card, evento=None):
     ctrl.bus.publish(CardDrawn(player_id=oponente, card=do_fundo, origem="efeito"))
 
 
-# "a carta recém comprada NO TURNO" = a compra automática da Fase de Recurso
+# "a carta recém comprada NO TURNO" = a compra automática da Fase de Saque
 # (origem "turno" — ver ResourceSystem), não uma compra de efeito.
 EFFECTS.registrar_gatilho_maldicao("Nevoeiro do Pânico", CardDrawn,
                                     lambda evento, ctrl, dono_id: evento.player_id != dono_id and evento.origem == "turno")

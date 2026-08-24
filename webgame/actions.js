@@ -43,11 +43,11 @@ TCG.acoes = {
     TCG.ofertarMaldicoesReativas(game, { tipo: "combatenteInvocado", playerId, carta }, continuar);
   },
 
-  // Fase Tática ou de Combate, 1x por turno: paga o Custo de Habilidade e
+  // Fase Principal ou de Batalha, 1x por turno: paga o Custo de Habilidade e
   // dispara o efeito da carta. A decisão de Maldição reativa (ex.: Roubo de
   // Essência) acontece ANTES do efeito da própria Habilidade resolver.
   ativarHabilidade(game, playerId, carta, continuar = () => {}) {
-    exigirFase(game, playerId, ["TATICA", "COMBATE"]);
+    exigirFase(game, playerId, ["PRINCIPAL", "BATALHA"]);
     if (game.board[playerId].monstro !== carta) throw new TCG.AcaoInvalida("Essa carta não é o combatente ativo desse jogador.");
     if (carta.custoHabilidade == null) throw new TCG.AcaoInvalida("Essa carta não tem Habilidade ativável.");
     if (carta.habilidadeUsadaNesteTurno) throw new TCG.AcaoInvalida("Habilidade já usada neste turno.");
@@ -60,12 +60,12 @@ TCG.acoes = {
     });
   },
 
-  // Fase Tática: joga uma carta de campo da mão — Domínio, Encantamento ou
+  // Fase Principal: joga uma carta de campo da mão — Domínio, Encantamento ou
   // Maldição, unificados no mesmo passo (ver plano). Maldição e a excecao:
   // setar (colocar virada pra baixo) e de graca — o Custo de Mana da carta
   // so e cobrado depois, na hora de revelar/ativar (ver ativarMaldicaoSetada).
   jogarCartaDeCampo(game, playerId, carta, slot = null) {
-    exigirFase(game, playerId, ["TATICA"]);
+    exigirFase(game, playerId, ["PRINCIPAL"]);
     const ps = game.players[playerId];
     if (!ps.mao.includes(carta)) throw new TCG.AcaoInvalida("Essa carta não está na mão desse jogador.");
 
@@ -137,12 +137,12 @@ TCG.acoes = {
     TCG.destroyCard(game, carta, "Maldição ativada");
   },
 
-  // Fase de Combate: confronta o combatente ativo contra o do oponente (ou
+  // Fase de Batalha: confronta o combatente ativo contra o do oponente (ou
   // os Pontos de Vida dele, se o campo estiver vazio). Só uma vez por turno
   // por combatente — um segundo ataque só acontece via efeito de carta
   // (ex.: Aquiles), que causa o dano direto sem passar por esta ação.
   atacar(game, playerId, oponenteId, continuar = () => {}) {
-    exigirFase(game, playerId, ["COMBATE"]);
+    exigirFase(game, playerId, ["BATALHA"]);
     if (game.turno === 1) throw new TCG.AcaoInvalida("Não é possível atacar no primeiro turno.");
     const atacante = game.board[playerId].monstro;
     if (!atacante) throw new TCG.AcaoInvalida("Não há combatente ativo pra atacar.");

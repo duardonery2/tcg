@@ -101,16 +101,16 @@ def jogar_ate_o_fim(page, max_ciclos=250):
         if pendente:
             esperar_modal_abrir(page, max_ms=20000, passo_ms=150)
         fechar_modal_se_aberto(page)
-        if estado["fase"] == "TATICA":
+        if estado["fase"] == "PRINCIPAL":
             # joga a 1a carta da mão (Domínio/Encantamento/Maldição, se houver)
             # pra exercitar de verdade o lado humano jogando carta de campo —
-            # não só a Fase Tática da IA — num playthrough real.
+            # não só a Fase Principal da IA — num playthrough real.
             cartas = page.query_selector_all(".mao-jogador .carta-mao")
             if cartas:
                 clicar_se_possivel(cartas[0])
                 esperar_fila_fx_esvaziar(page, max_ms=3000)
                 fechar_modal_se_aberto(page)
-        if estado["fase"] == "COMBATE":
+        if estado["fase"] == "BATALHA":
             # Animação, Som -> Estado: o texto/disabled dos botões só reflete
             # a realidade depois que a fila drena (ver renderQuandoPronto em
             # ui.js) — sem esperar aqui, is_disabled() pode ler um estado
@@ -139,7 +139,7 @@ def testar_estado_inicial(browser):
     assert estado["jogadores"]["1"]["mana"] == 5, estado
     assert len(estado["jogadores"]["1"]["mao"]) == 4, estado
     assert estado["tabuleiro"]["1"]["monstro"] is None, estado
-    # a Fase de Recurso e so compra+mana automaticos e e pulada sozinha pra
+    # a Fase de Saque e so compra+mana automaticos e e pulada sozinha pra
     # quem esta jogando localmente (sem decisao nela, sem exigir clique)
     assert estado["fase"] == "INVOCACAO", estado
     # a escolha de Combatente pra invocar sempre aparece como modal, sozinha,
@@ -168,7 +168,7 @@ def testar_acoes_e_hover(browser):
     estado = page.evaluate("() => TCG.estado(window.game)")
     assert estado["tabuleiro"]["1"]["monstro"] is not None, "invocar nao colocou o combatente no tabuleiro"
     assert estado["jogadores"]["1"]["mana"] < mana_antes, "invocar nao descontou mana"
-    assert estado["fase"] == "TATICA", f"Invocação deveria ter avançado sozinha pra Tática, mas esta em {estado['fase']}"
+    assert estado["fase"] == "PRINCIPAL", f"Invocação deveria ter avançado sozinha pra Tática, mas esta em {estado['fase']}"
 
     mao_cartas = page.query_selector_all(".mao-jogador .carta-mao")
     if mao_cartas:
@@ -183,7 +183,7 @@ def testar_acoes_e_hover(browser):
         assert page.eval_on_selector("#preview-legenda", "el => getComputedStyle(el).display") == "none", \
             "nenhuma legenda deveria aparecer no preview de uma carta com imagem"
 
-    page.click("#btn-fase")  # TATICA -> COMBATE
+    page.click("#btn-fase")  # PRINCIPAL -> BATALHA
     page.wait_for_timeout(60)
 
     # regra nova: nao se pode atacar no primeiro turno
@@ -210,7 +210,7 @@ def testar_acoes_e_hover(browser):
         # A Invocação já pode ter avançado sozinha até a Tática (ver fechar_modal_se_aberto
         # acima), entao avanca so o que ainda faltar pra chegar ao Combate.
         for _ in range(3):
-            if page.evaluate("() => window.game.fase") == "COMBATE":
+            if page.evaluate("() => window.game.fase") == "BATALHA":
                 break
             page.click("#btn-fase")
             page.wait_for_timeout(60)
@@ -320,7 +320,7 @@ def testar_gatilho_de_maldicao_ao_ser_atacado(browser):
 
     page.evaluate("""() => {
         const g = window.game;
-        g.turno = 3; g.fase = 'COMBATE'; g.jogadorDaVez = 2; g.fimDeJogo = null;
+        g.turno = 3; g.fase = 'BATALHA'; g.jogadorDaVez = 2; g.fimDeJogo = null;
         const atacanteIA = { nome: 'AtacanteIA', arquivo: '../cards/Rei_Arthur.png', tipo: 'Monstro', elemento: 'Fogo', custoMana: 1,
             resistencia: 15, combate: 15, atualPow: 15, atualRes: 15, statusEffects: [],
             habilidadeUsadaNesteTurno: false, atacouNesteTurno: false, faceDown: false,
@@ -438,7 +438,7 @@ def testar_maldicao_setada_visivel_para_o_dono_no_hover(browser):
 
     nome_real = page.evaluate("""() => {
         const g = window.game;
-        g.jogadorDaVez = 1; g.fase = 'TATICA';
+        g.jogadorDaVez = 1; g.fase = 'PRINCIPAL';
         const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
         const maldicao = acharCarta('Escudo de Gelo Absoluto');
         g.players[1].mao = [maldicao];
@@ -479,7 +479,7 @@ def testar_dominio_unico_no_jogo_e_fundo_compartilhado(browser):
 
     resultado = page.evaluate("""() => {
         const g = window.game;
-        g.jogadorDaVez = 1; g.fase = 'TATICA'; g.turno = 2;
+        g.jogadorDaVez = 1; g.fase = 'PRINCIPAL'; g.turno = 2;
         const acharCarta = (nome) => structuredClone(CARTAS.find(c => c.nome === nome));
         const dominio1 = acharCarta('Vulcão Primordial');
         const dominio2 = acharCarta('Templo de Atlântida');
@@ -627,11 +627,11 @@ def testar_nunca_2_dominios_simultaneos_em_partida_real(browser, seeds=range(1, 
                 }
                 if (g.jogadorDaVez === 1) {
                     iaEmAndamento = false;
-                    if (g.fase === 'TATICA') {
+                    if (g.fase === 'PRINCIPAL') {
                         const jogavel = g.players[1].mao.find(c => ['Domínio','Encantamento','Maldição'].includes(c.tipo));
                         if (jogavel) { try { TCG.acoes.jogarCartaDeCampo(g, 1, jogavel); } catch(e) {} }
                     }
-                    if (g.fase === 'COMBATE' && g.board[1].monstro && !g.board[1].monstro.atacouNesteTurno && g.turno !== 1) {
+                    if (g.fase === 'BATALHA' && g.board[1].monstro && !g.board[1].monstro.atacouNesteTurno && g.turno !== 1) {
                         try { TCG.acoes.atacar(g, 1, 2); } catch(e) {}
                     }
                     if (!g.fimDeJogo) TCG.acoes.avancarFase(g);
@@ -679,13 +679,13 @@ def testar_dominio_aparece_em_partida_real(browser, max_seeds=15):
             if pendente:
                 esperar_modal_abrir(page, max_ms=20000, passo_ms=150)
             fechar_modal_se_aberto(page)
-            if estado["fase"] == "TATICA":
+            if estado["fase"] == "PRINCIPAL":
                 cartas = page.query_selector_all(".mao-jogador .carta-mao")
                 if cartas:
                     clicar_se_possivel(cartas[0])
                     esperar_fila_fx_esvaziar(page, max_ms=3000)
                     fechar_modal_se_aberto(page)
-            if estado["fase"] == "COMBATE":
+            if estado["fase"] == "BATALHA":
                 esperar_fila_fx_esvaziar(page, max_ms=3000)  # o estado do botão só é confiável com a fila drenada
                 btn = page.query_selector("#btn-atacar")
                 if btn and not btn.is_disabled():
@@ -760,7 +760,7 @@ def testar_dominio_passivo_reaplicado_e_limpo_ao_destruir(browser):
     'enquanto ativo' (Trono de Camelot) tinha o bug de aplicar o buff só 1x,
     no combatente ativo NO MOMENTO da ativação — não cobria um combatente
     invocado depois, e o buff nunca sumia se o Domínio fosse destruído.
-    Agora é reaplicado do zero a cada Fase Tática e limpo na destruição."""
+    Agora é reaplicado do zero a cada Fase Principal e limpo na destruição."""
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     erros = []
     page.on("pageerror", lambda e: erros.append(str(e)))
@@ -771,7 +771,7 @@ def testar_dominio_passivo_reaplicado_e_limpo_ao_destruir(browser):
 
     r = page.evaluate("""() => {
         const g = window.game;
-        g.jogadorDaVez = 1; g.fase = 'TATICA'; g.turno = 2; g.players[1].mana = 99;
+        g.jogadorDaVez = 1; g.fase = 'PRINCIPAL'; g.turno = 2; g.players[1].mana = 99;
         const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
         const dominio = acharCarta('Trono de Camelot');
         const heroiA = acharCarta('Rei Arthur');
@@ -784,7 +784,7 @@ def testar_dominio_passivo_reaplicado_e_limpo_ao_destruir(browser):
         TCG.destroyCard(g, heroiA, 'teste');
         const heroiB = acharCarta('Gilgamesh');
         g.board[1].monstro = heroiB;
-        TCG.aplicarPassivos(g); // simula entrar de novo na Fase Tática
+        TCG.aplicarPassivos(g); // simula entrar de novo na Fase Principal
         const powBComDominio = heroiB.atualPow;
 
         TCG.destroyCard(g, dominio, 'teste');
@@ -798,11 +798,11 @@ def testar_dominio_passivo_reaplicado_e_limpo_ao_destruir(browser):
     }""")
     print("resultado:", r)
     assert r["buffouA"], "Trono de Camelot deveria ter buffado o Herói ativo na hora de ativar"
-    assert r["buffouBTambem"], "um Herói invocado DEPOIS deveria ganhar o buff na próxima Fase Tática (passivo reaplicado)"
+    assert r["buffouBTambem"], "um Herói invocado DEPOIS deveria ganhar o buff na próxima Fase Principal (passivo reaplicado)"
     assert r["buffSumiuAoDestruirDominio"], "o buff deveria sumir quando o Domínio é destruído"
     assert not erros, f"erros no console: {erros}"
     page.close()
-    print("OK  Domínio passivo ('enquanto ativo') reaplicado a cada Fase Tática e limpo ao destruir")
+    print("OK  Domínio passivo ('enquanto ativo') reaplicado a cada Fase Principal e limpo ao destruir")
 
 
 def testar_dominio_gatilho_recorrente_entre_turnos(browser):
@@ -820,7 +820,7 @@ def testar_dominio_gatilho_recorrente_entre_turnos(browser):
 
     r = page.evaluate("""() => {
         const g = window.game;
-        g.jogadorDaVez = 1; g.fase = 'TATICA'; g.turno = 2; g.players[1].mana = 99;
+        g.jogadorDaVez = 1; g.fase = 'PRINCIPAL'; g.turno = 2; g.players[1].mana = 99;
         const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
         const dominio = acharCarta('Oceano Primordial');
         g.players[1].mao = [dominio];
@@ -861,7 +861,7 @@ def testar_valhalla_redireciona_para_panteao(browser):
 
     r = page.evaluate("""() => {
         const g = window.game;
-        g.jogadorDaVez = 1; g.fase = 'TATICA'; g.turno = 2; g.players[1].mana = 99;
+        g.jogadorDaVez = 1; g.fase = 'PRINCIPAL'; g.turno = 2; g.players[1].mana = 99;
         const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
         const dominio = acharCarta('Valhalla');
         g.players[1].mao = [dominio];
@@ -904,7 +904,7 @@ def testar_caixa_de_pandora_gatilho_correto(browser):
     # revelada) não deveria oferecer nem disparar efeito nenhum.
     setup1 = page.evaluate("""() => {
         const g = window.game;
-        g.jogadorDaVez = 1; g.fase = 'TATICA'; g.turno = 2; g.players[1].mana = 99;
+        g.jogadorDaVez = 1; g.fase = 'PRINCIPAL'; g.turno = 2; g.players[1].mana = 99;
         const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
         const caixa = acharCarta('Caixa de Pandora');
         g.board[1].magia = [null, null, null, null, null];
@@ -921,7 +921,7 @@ def testar_caixa_de_pandora_gatilho_correto(browser):
     # destruído -> modal pergunta se quer ativar -> só descarta ao decidir "sim".
     page.evaluate("""() => {
         const g = window.game;
-        g.jogadorDaVez = 1; g.fase = 'TATICA'; g.players[1].mana = 99;
+        g.jogadorDaVez = 1; g.fase = 'PRINCIPAL'; g.players[1].mana = 99;
         const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
         const caixa = acharCarta('Caixa de Pandora');
         g.board[1].magia = [null, null, null, null, null];
@@ -978,7 +978,7 @@ def testar_turno_da_ia_para_de_verdade_para_decisao_de_maldicao(browser):
         g.board[2].monstro = atacanteIA;
         g.board[1].monstro = defensorLocal;
         g.board[1].magia = [maldicao, null, null, null, null];
-        g.jogadorDaVez = 1; g.fase = 'COMBATE'; g.turno = 3;
+        g.jogadorDaVez = 1; g.fase = 'BATALHA'; g.turno = 3;
     }""")
 
     turno_antes = page.evaluate("() => window.game.turno")
@@ -993,8 +993,8 @@ def testar_turno_da_ia_para_de_verdade_para_decisao_de_maldicao(browser):
         };
     }""")
     print(f"turno antes={turno_antes}, estado logo após clicar Fim de Turno:", estado)
-    assert estado["jogadorDaVez"] == 2 and estado["fase"] == "COMBATE", \
-        f"o jogo deveria estar PARADO no meio do turno da IA (ainda jogadorDaVez=2/fase=COMBATE), veio {estado}"
+    assert estado["jogadorDaVez"] == 2 and estado["fase"] == "BATALHA", \
+        f"o jogo deveria estar PARADO no meio do turno da IA (ainda jogadorDaVez=2/fase=BATALHA), veio {estado}"
     # turno_antes+1 é esperado (o clique em "Fim de Turno" primeiro fecha o
     # turno do jogador local, turno_antes -> turno_antes+1, ANTES do turno da
     # IA começar) — o que não pode acontecer é passar disso, o que indicaria
@@ -1069,7 +1069,7 @@ def testar_ia_nao_revela_propria_maldicao_no_proprio_turno(browser):
     """Regressão do bug pré-existente descrito em GAME_DESIGN.md: Maldição só
     pode ser revelada 'a qualquer momento no turno do OPONENTE' — a IA não
     deveria mais considerar revelar a PRÓPRIA Maldição setada durante a
-    PRÓPRIA Fase Tática (opção removida de ai.js/opcoesFaseTatica)."""
+    PRÓPRIA Fase Principal (opção removida de ai.js/opcoesFaseTatica)."""
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     erros = []
     page.on("pageerror", lambda e: erros.append(str(e)))
@@ -1089,7 +1089,7 @@ def testar_ia_nao_revela_propria_maldicao_no_proprio_turno(browser):
         g.board[2].magia = [maldicao, null, null, null, null];
         maldicao.faceDown = true;
         g.players[2].mana = 99;
-        g.jogadorDaVez = 2; g.fase = 'TATICA';
+        g.jogadorDaVez = 2; g.fase = 'PRINCIPAL';
         for (let i = 0; i < 20; i++) {
             const opcoes = [];
             const ps = g.players[2];
@@ -1165,7 +1165,7 @@ def testar_fx_summon_voa_e_limpa_sozinho(browser):
 
 
 def testar_fx_statusAlterado_nao_dispara_ao_reaplicar_passivo_sem_mudanca(browser):
-    """TCG.aplicarPassivos roda em TODA Fase Tática mesmo sem nada mudar —
+    """TCG.aplicarPassivos roda em TODA Fase Principal mesmo sem nada mudar —
     o evento genérico "statusAlterado" (usado pra animar buffs) não pode
     disparar de novo nesse caso, só na primeira aplicação real."""
     page = browser.new_page(viewport={"width": 1400, "height": 900})
@@ -1178,7 +1178,7 @@ def testar_fx_statusAlterado_nao_dispara_ao_reaplicar_passivo_sem_mudanca(browse
 
     r = page.evaluate("""() => {
         const g = window.game;
-        g.jogadorDaVez = 1; g.fase = 'TATICA'; g.players[1].mana = 99;
+        g.jogadorDaVez = 1; g.fase = 'PRINCIPAL'; g.players[1].mana = 99;
         const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
         const dominio = acharCarta('Trono de Camelot');
         const heroi = acharCarta('Rei Arthur');
@@ -1190,7 +1190,7 @@ def testar_fx_statusAlterado_nao_dispara_ao_reaplicar_passivo_sem_mudanca(browse
 
         TCG.acoes.jogarCartaDeCampo(g, 1, dominio); // ativação real -> 1 disparo (+3)
         const aposAtivar = disparos.length;
-        TCG.aplicarPassivos(g); // simula reentrar na Fase Tática sem nada mudar -> 0 disparos a mais
+        TCG.aplicarPassivos(g); // simula reentrar na Fase Principal sem nada mudar -> 0 disparos a mais
         TCG.aplicarPassivos(g);
         const aposReaplicar = disparos.length;
         return { disparos, aposAtivar, aposReaplicar };

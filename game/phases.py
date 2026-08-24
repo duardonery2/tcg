@@ -7,7 +7,7 @@ reage a esse evento via EventBus — nenhum outro System sabe "que fase e",
 so escuta a notificacao.
 
 Ordem das fases por turno (GAME_DESIGN.md, 'A Estrutura do Turno'):
-    RECURSO -> INVOCACAO -> TATICA -> COMBATE -> (troca de jogador) RECURSO
+    SAQUE -> INVOCACAO -> PRINCIPAL -> BATALHA -> FINAL -> (troca de jogador) SAQUE
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from .components import (
 from .ecs import System, World
 from .events import EventBus, PhaseChanged, TurnStarted
 
-_ORDEM = [Fase.RECURSO, Fase.INVOCACAO, Fase.TATICA, Fase.COMBATE]
+_ORDEM = [Fase.SAQUE, Fase.INVOCACAO, Fase.PRINCIPAL, Fase.BATALHA, Fase.FINAL]
 
 
 class PhaseSystem(System):
@@ -41,8 +41,8 @@ class PhaseSystem(System):
         return ts
 
     def avancar(self, world: World) -> TurnState:
-        """Avanca uma fase; se estava em COMBATE, passa a vez e volta pra
-        RECURSO do proximo jogador."""
+        """Avanca uma fase; se estava em FINAL, passa a vez e volta pra
+        SAQUE do proximo jogador."""
         _, ts = self._turn_state(world)
         idx = _ORDEM.index(ts.fase)
 
@@ -50,14 +50,14 @@ class PhaseSystem(System):
         if idx < len(_ORDEM) - 1:
             ts.fase = _ORDEM[idx + 1]
         else:
-            # fim da Fase de Combate -> troca de jogador, novo turno
+            # fim da Fase Final -> troca de jogador, novo turno
             i = self.jogadores.index(ts.jogador_da_vez)
             ts.jogador_da_vez = self.jogadores[(i + 1) % len(self.jogadores)]
             ts.numero_turno += 1
-            ts.fase = Fase.RECURSO
+            ts.fase = Fase.SAQUE
 
         self.bus.publish(PhaseChanged(player_id=ts.jogador_da_vez, fase_anterior=anterior, fase_nova=ts.fase))
-        if ts.fase is Fase.RECURSO and anterior is Fase.COMBATE:
+        if ts.fase is Fase.SAQUE and anterior is Fase.FINAL:
             self.bus.publish(TurnStarted(player_id=ts.jogador_da_vez, numero_turno=ts.numero_turno))
         return ts
 
@@ -69,10 +69,15 @@ class PhaseSystem(System):
 
 
 class UpkeepSystem(System):
-    """Reage a PhaseChanged: zera 'Habilidade usada neste turno' e expira
-    StatusEffects com duracao NESTE_TURNO/ATE_FIM_DE_TURNO sempre que o
-    jogador DA VEZ entra na Fase de Recurso (ou seja, no inicio do turno
-    dele — os buffs postos por ELE no turno anterior caem)."""
+    """Reage a PhaseChanged em dois momentos distintos do turno:
+    - Fase de Saque (início do turno de quem entra): zera 'Habilidade
+      usada neste turno' de TODOS os combatentes — turno novo, direito de
+      usar Habilidade renovado pra quem quer que jogue a seguir.
+    - Fase Final (fim do turno de quem está saindo dela — o jogador_da_vez
+      ainda É esse jogador nesse instante, a troca só acontece no PRÓXIMO
+      avancar()): expira todo StatusEffect com duração NESTE_TURNO/
+      ATE_FIM_DE_TURNO, dos dois lados — "neste turno" significa até o
+      fim do turno atual, não importa em qual combatente o efeito está."""
 
     def __init__(self, bus: EventBus):
         bus.subscribe(PhaseChanged, self._on_phase_changed)
@@ -82,20 +87,22 @@ class UpkeepSystem(System):
         self._world_ref = world
 
     def _on_phase_changed(self, event: PhaseChanged) -> None:
-        if event.fase_nova is not Fase.RECURSO or self._world_ref is None:
+        if self._world_ref is None:
             return
         world = self._world_ref
-        for eid, ability in world.query(AbilityCost):
-            ability.usada_neste_turno = False
-        for eid, statuses in world.query(StatusEffects):
-            restantes = []
-            for st in statuses.itens:
-                if st.duracao in (Duracao.NESTE_TURNO, Duracao.ATE_FIM_DE_TURNO):
-                    continue  # expira
-                restantes.append(st)
-            if len(restantes) != len(statuses.itens):
-                statuses.itens = restantes
-                _recalcular_stats(world, eid)
+        if event.fase_nova is Fase.SAQUE:
+            for eid, ability in world.query(AbilityCost):
+                ability.usada_neste_turno = False
+        elif event.fase_nova is Fase.FINAL:
+            for eid, statuses in world.query(StatusEffects):
+                restantes = []
+                for st in statuses.itens:
+                    if st.duracao in (Duracao.NESTE_TURNO, Duracao.ATE_FIM_DE_TURNO):
+                        continue  # expira
+                    restantes.append(st)
+                if len(restantes) != len(statuses.itens):
+                    statuses.itens = restantes
+                    _recalcular_stats(world, eid)
 
     def update(self, world: World, **ctx) -> None:
         self.bind(world)

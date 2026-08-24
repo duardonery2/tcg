@@ -132,7 +132,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
 
   function podeAtivarHabilidade(carta) {
     return carta && carta.custoHabilidade != null && !carta.habilidadeUsadaNesteTurno
-      && game.jogadorDaVez === jogadorLocal && ["TATICA", "COMBATE"].includes(game.fase);
+      && game.jogadorDaVez === jogadorLocal && ["PRINCIPAL", "BATALHA"].includes(game.fase);
   }
 
   // ---- Baralho / Panteão / Pilha de Descarte: renderizados como um slot
@@ -285,7 +285,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
   // um clique em "Próxima Fase" só pra sair dela.
   function avancarSeAindaNaoAcabou() {
     if (!game.fimDeJogo) acoes.avancarFase(game);
-    renderQuandoPronto(); // avancarFase pode entrar na Fase Tática e disparar passivos (statusAlterado)
+    renderQuandoPronto(); // avancarFase pode entrar na Fase Principal e disparar passivos (statusAlterado)
   }
 
   function solicitarInvocacao() {
@@ -312,20 +312,20 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
   }
   game.bus.on("faseAlterada", (e) => {
     if (e.faseNova === "INVOCACAO" && e.playerId === jogadorLocal) solicitarInvocacao();
-    // Pular a Fase de Recurso (só compra+mana automáticos, sem decisão)
+    // Pular a Fase de Saque (só compra+mana automáticos, sem decisão)
     // normalmente é disparado depois de CADA clique local (ver
     // pularRecursoSeForAVez, chamado no handler de #btn-fase) — mas em
     // multiplayer, quando é a vez do jogador local começar por uma
     // transição de turno que chegou PELA REDE (não por um clique seu), não
     // há clique nenhum pra disparar isso. Reagir aqui cobre os dois casos
     // (é idempotente: pularRecursoSeForAVez já confere a fase antes de agir).
-    if (e.faseNova === "RECURSO" && e.playerId === jogadorLocal) tentar(pularRecursoSeForAVez);
+    if (e.faseNova === "SAQUE" && e.playerId === jogadorLocal) tentar(pularRecursoSeForAVez);
   });
 
   function renderMao() {
     const container = el("mao-jogador");
     container.innerHTML = "";
-    const jogavel = game.jogadorDaVez === jogadorLocal && game.fase === "TATICA";
+    const jogavel = game.jogadorDaVez === jogadorLocal && game.fase === "PRINCIPAL";
     for (const carta of game.players[jogadorLocal].mao) {
       const div = document.createElement("div");
       div.className = "carta-mao";
@@ -346,12 +346,12 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
     const btnAtacar = el("btn-atacar");
     const btnFase = el("btn-fase");
     const monstroLocal = game.board[jogadorLocal].monstro;
-    const podeAtacar = game.jogadorDaVez === jogadorLocal && game.fase === "COMBATE" && game.turno !== 1
+    const podeAtacar = game.jogadorDaVez === jogadorLocal && game.fase === "BATALHA" && game.turno !== 1
       && monstroLocal && !monstroLocal.atacouNesteTurno;
-    btnAtacar.style.display = game.fase === "COMBATE" ? "inline-block" : "none";
+    btnAtacar.style.display = game.fase === "BATALHA" ? "inline-block" : "none";
     btnAtacar.disabled = !podeAtacar;
     btnFase.disabled = game.jogadorDaVez !== jogadorLocal || !!game.fimDeJogo;
-    btnFase.textContent = game.fase === "COMBATE" ? "Fim de Turno" : "Próxima Fase";
+    btnFase.textContent = game.fase === "BATALHA" ? "Fim de Turno" : "Próxima Fase";
   }
 
   function renderStatus() {
@@ -1000,20 +1000,20 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
 
   // ---- botoes -----------------------------------------
 
-  // A Fase de Recurso e so compra+mana automaticos, sem decisao do jogador —
+  // A Fase de Saque e so compra+mana automaticos, sem decisao do jogador —
   // passa direto pra Invocação sozinha, sem exigir um clique so pra "sair" dela.
   function pularRecursoSeForAVez() {
-    if (!game.fimDeJogo && game.jogadorDaVez === jogadorLocal && game.fase === "RECURSO") {
+    if (!game.fimDeJogo && game.jogadorDaVez === jogadorLocal && game.fase === "SAQUE") {
       acoes.avancarFase(game);
     }
   }
 
   el("btn-atacar").addEventListener("click", () => tentar(() => acoes.atacar(game, jogadorLocal, oponenteId)));
   el("btn-fase").addEventListener("click", () => {
-    // "Próxima Fase" avança um passo só; só na Fase de Combate o botão vira
+    // "Próxima Fase" avança um passo só; só na Fase de Batalha o botão vira
     // "Fim de Turno" e de fato fecha o turno do jogador local (terminarTurno
-    // consome o resto da Fase de Combate e entrega a vez ao oponente).
-    if (game.fase === "COMBATE") tentar(() => acoes.terminarTurno(game));
+    // consome o resto da Fase de Batalha e entrega a vez ao oponente).
+    if (game.fase === "BATALHA") tentar(() => acoes.terminarTurno(game));
     else tentar(() => acoes.avancarFase(game));
 
     // Só em modo local (contra bot) o clique do jogador dispara o turno

@@ -51,10 +51,11 @@ class Zona(Enum):
 
 
 class Fase(Enum):
-    RECURSO = auto()
+    SAQUE = auto()       # compra + mana automaticos (era "Recurso")
     INVOCACAO = auto()
-    TATICA = auto()
-    COMBATE = auto()
+    PRINCIPAL = auto()   # magias: Dominio/Encantamento/Maldicao (era "Tatica")
+    BATALHA = auto()     # declarar ataque (era "Combate")
+    FINAL = auto()       # limpeza de fim de turno: expira buffs "neste turno"
 
 
 class Duracao(Enum):
@@ -204,5 +205,5 @@ class IgnoraFraquezaElemental:
 @dataclass
 class TurnState:
     jogador_da_vez: int
-    fase: Fase = Fase.RECURSO
+    fase: Fase = Fase.SAQUE
     numero_turno: int = 1

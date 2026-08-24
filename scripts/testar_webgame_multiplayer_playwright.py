@@ -149,9 +149,9 @@ def testar_acao_do_guest_chega_no_host(browser):
 
         fechar_modal_se_aberto(page_host)  # host invoca
         page_host.wait_for_timeout(1500)
-        page_host.click("#btn-fase")  # TATICA -> COMBATE
+        page_host.click("#btn-fase")  # PRINCIPAL -> BATALHA
         page_host.wait_for_timeout(1500)
-        page_host.click("#btn-fase")  # COMBATE -> termina o turno do host
+        page_host.click("#btn-fase")  # BATALHA -> termina o turno do host
         page_host.wait_for_timeout(2500)
 
         # espera o modal de invocação abrir de verdade na TELA do guest

@@ -195,7 +195,7 @@ class GameGUI:
         if self._rect_botao_avancar().collidepoint(pos):
             ctrl.avancar_fase()
             return
-        if self._rect_botao_atacar().collidepoint(pos) and ts.fase is Fase.COMBATE and ts.jogador_da_vez == jogador:
+        if self._rect_botao_atacar().collidepoint(pos) and ts.fase is Fase.BATALHA and ts.jogador_da_vez == jogador:
             self._tentar(DeclareAttackAction(player_id=jogador, oponente_id=ctrl.oponente_de(jogador)))
             return
 
@@ -208,13 +208,13 @@ class GameGUI:
                     self._tentar(SummonAction(player_id=jogador, card=card))
                     return
 
-        if ts.fase in (Fase.TATICA, Fase.COMBATE):
+        if ts.fase in (Fase.PRINCIPAL, Fase.BATALHA):
             monstro_rect, _ = self._rects_tabuleiro(jogador, self._y_base_local())
             if monstro_rect.collidepoint(pos) and ctrl.board.lado(jogador).monstro is not None:
                 self._tentar(ActivateAbilityAction(player_id=jogador, card=ctrl.board.lado(jogador).monstro))
                 return
 
-        if ts.fase is Fase.TATICA:
+        if ts.fase is Fase.PRINCIPAL:
             for rect, card in self._rects_mao():
                 if rect.collidepoint(pos):
                     self._jogar_da_mao(jogador, card)
@@ -289,7 +289,7 @@ class GameGUI:
 
         # botoes
         self._botao(self._rect_botao_avancar(), "Próxima Fase")
-        if ts.fase is Fase.COMBATE and ts.jogador_da_vez == self.jogador_local:
+        if ts.fase is Fase.BATALHA and ts.jogador_da_vez == self.jogador_local:
             self._botao(self._rect_botao_atacar(), "Atacar")
 
         # overlay de selecao pendente (por cima de tudo, bloqueia o resto do clique)

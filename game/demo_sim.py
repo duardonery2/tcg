@@ -63,24 +63,24 @@ def main() -> None:
     print(ctrl.estado())
 
     print("\n=== Fase de Invocação: J1 invoca o primeiro combatente do Panteão ===")
-    ctrl.avancar_fase()  # RECURSO -> INVOCACAO
+    ctrl.avancar_fase()  # SAQUE -> INVOCACAO
     p1_panteao_ids = ctrl.panteoes[1].restantes()
     escolhido = p1_panteao_ids[0]
     print(f"  escolhendo {ctrl.nome_da_carta(escolhido)} (custo "
           f"{ctrl.world.get_component(escolhido, __import__('game.components', fromlist=['ManaCost']).ManaCost).valor})")
     ctrl.submeter_acao(SummonAction(player_id=1, card=escolhido))
 
-    print("\n=== Fase Tática: (nada a fazer neste exemplo) ===")
-    ctrl.avancar_fase()  # INVOCACAO -> TATICA
+    print("\n=== Fase Principal: (nada a fazer neste exemplo) ===")
+    ctrl.avancar_fase()  # INVOCACAO -> PRINCIPAL
 
-    print("\n=== Fase de Combate: ativa a Habilidade (se houver) e ataca ===")
-    ctrl.avancar_fase()  # TATICA -> COMBATE
+    print("\n=== Fase de Batalha: ativa a Habilidade (se houver) e ataca ===")
+    ctrl.avancar_fase()  # PRINCIPAL -> BATALHA
     from .components import AbilityCost
     if ctrl.world.has_component(escolhido, AbilityCost):
         ctrl.submeter_acao(ActivateAbilityAction(player_id=1, card=escolhido))
     ctrl.submeter_acao(DeclareAttackAction(player_id=1, oponente_id=2))
 
-    print("\n=== passa a vez pra J2 (COMBATE -> RECURSO do J2) ===")
+    print("\n=== passa a vez pra J2 (BATALHA -> SAQUE do J2) ===")
     ctrl.avancar_fase()
     print(ctrl.estado())
 
@@ -99,7 +99,7 @@ def main() -> None:
                     custo = ctrl.world.get_component(carta, __import__("game.components", fromlist=["ManaCost"]).ManaCost).valor
                     if ctrl.players[jogador].mana >= custo:
                         ctrl.submeter_acao(SummonAction(player_id=jogador, card=carta))
-        elif ts.fase.name == "COMBATE":
+        elif ts.fase.name == "BATALHA":
             if ctrl.board.lado(jogador).monstro is not None:
                 ctrl.submeter_acao(DeclareAttackAction(player_id=jogador, oponente_id=ctrl.oponente_de(jogador)))
         ctrl.avancar_fase()

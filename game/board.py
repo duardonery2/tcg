@@ -54,7 +54,7 @@ class BoardSide:
 
     def dominio_ativo(self, world, dominio_cards: set[int]) -> int | None:
         """Ajuda a achar qual carta nos slots de magia e o Domínio ativo
-        (so pode haver 1 por vez, GAME_DESIGN.md — Fase Tática)."""
+        (so pode haver 1 por vez, GAME_DESIGN.md — Fase Principal)."""
         for v in self.magia:
             if v is not None and v in dominio_cards:
                 return v
