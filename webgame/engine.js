@@ -424,3 +424,59 @@ TCG.estado = function estado(game) {
     fimDeJogo: game.fimDeJogo ? game.fimDeJogo.motivo : null,
   };
 };
+
+// Snapshot COMPLETO do estado (cartas de verdade, não só nomes — instância
+// inteira, com arquivo/custoMana/atualPow/etc, tudo que renderLado/renderMao
+// precisam pra desenhar a tela) FILTRADO do ponto de vista de
+// `destinatarioId` — usado pelo host em multiplayer (webgame/rede.js) pra
+// sincronizar o guest sem NUNCA revelar informação oculta: a mão do
+// jogador que não é `destinatarioId`, e qualquer Maldição virada pra baixo
+// (faceDown) cujo dono não é `destinatarioId` — nem o dono de uma
+// Maldição ALHEIA setada vê a identidade dela. Isso não é só uma UI que
+// escolhe não desenhar (como TCG.estado/ui.js fazem hoje) — o dado em si
+// não existe no lado de quem não deveria ver, então nem abrindo o
+// devtools dá pra trapacear.
+function cartaOuOculta(carta, podeVer) {
+  if (!carta) return null;
+  if (podeVer) return carta;
+  return { oculto: true, instanceId: carta.instanceId };
+}
+
+TCG.estadoCompletoPara = function estadoCompletoPara(game, destinatarioId) {
+  function maoFiltrada(playerId) {
+    return game.players[playerId].mao.map((c) => cartaOuOculta(c, playerId === destinatarioId));
+  }
+  function magiaFiltrada(lado) {
+    return lado.magia.map((c) => cartaOuOculta(c, !c || !c.faceDown || lado.playerId === destinatarioId));
+  }
+  return {
+    turno: game.turno,
+    jogadorDaVez: game.jogadorDaVez,
+    fase: game.fase,
+    ultimoDominioAtivadoPor: game.ultimoDominioAtivadoPor,
+    fimDeJogo: game.fimDeJogo,
+    players: Object.fromEntries(game.jogadores.map((pid) => [pid, {
+      nome: game.players[pid].nome, mana: game.players[pid].mana, vida: game.players[pid].vida,
+      mao: maoFiltrada(pid),
+    }])),
+    board: Object.fromEntries(game.jogadores.map((pid) => [pid, {
+      playerId: pid, monstro: game.board[pid].monstro, magia: magiaFiltrada(game.board[pid]),
+    }])),
+    // Baralho: nunca é lido além da CONTAGEM em nenhum lugar da UI, nem pelo
+    // próprio dono (a compra é aleatória/oculta até sair — ver TCG.comprar)
+    // — manda só o número, nunca a lista, mesmo pro dono.
+    baralhos: Object.fromEntries(game.jogadores.map((pid) => [pid, TCG.Deck.restantes(game.baralhos[pid]).length])),
+    // Panteão é DIFERENTE: é a lista de Combatentes que o PRÓPRIO dono
+    // escolhe pra invocar (solicitarInvocacao, ui.js) — ele precisa ver a
+    // lista inteira pra decidir. Só o OPONENTE não pode ver (mesma regra
+    // de sempre: contagem, não identidade).
+    panteoes: Object.fromEntries(game.jogadores.map((pid) => [
+      pid,
+      pid === destinatarioId
+        ? TCG.Deck.restantes(game.panteoes[pid])
+        : TCG.Deck.restantes(game.panteoes[pid]).length,
+    ])),
+    // descarte é informação pública (ver ui.js mostrarDescarte) — sem filtro.
+    descarte: Object.fromEntries(game.jogadores.map((pid) => [pid, game.descarte[pid]])),
+  };
+};

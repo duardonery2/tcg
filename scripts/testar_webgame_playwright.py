@@ -6,7 +6,7 @@ se algo quebrar, em vez de inspecionar o codigo por fora.
 Uso: python3 scripts/testar_webgame_playwright.py
 """
 import os
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright, Error as PlaywrightError, TimeoutError as PlaywrightTimeoutError
 
 INDEX = "file://" + os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "webgame", "index.html")
 
@@ -14,11 +14,17 @@ INDEX = "file://" + os.path.join(os.path.dirname(os.path.dirname(os.path.abspath
 def clicar_se_possivel(elemento, timeout=500):
     """Clica com um timeout curto e engole o erro se um modal (ex.: gatilho
     de Maldição do oponente atacando) abrir bem entre o estado lido e o
-    clique — o proximo ciclo do loop de teste ja fecha esse modal sozinho."""
+    clique — o proximo ciclo do loop de teste ja fecha esse modal sozinho.
+    Também engole "elemento não está mais no DOM": com o render() adiado
+    (Animação, Som -> Estado — ver renderQuandoPronto em ui.js), uma
+    animação de OUTRA ação pode terminar e disparar um re-render bem entre
+    o `query_selector_all` que achou esse elemento e o clique de verdade,
+    trocando a árvore DOM debaixo do teste — não é um bug de jogo, só um
+    elemento que já era de um render anterior."""
     try:
         elemento.click(timeout=timeout)
         return True
-    except PlaywrightTimeoutError:
+    except (PlaywrightTimeoutError, PlaywrightError):
         return False
 
 
@@ -102,16 +108,21 @@ def jogar_ate_o_fim(page, max_ciclos=250):
             cartas = page.query_selector_all(".mao-jogador .carta-mao")
             if cartas:
                 clicar_se_possivel(cartas[0])
-                page.wait_for_timeout(15)
+                esperar_fila_fx_esvaziar(page, max_ms=3000)
                 fechar_modal_se_aberto(page)
         if estado["fase"] == "COMBATE":
+            # Animação, Som -> Estado: o texto/disabled dos botões só reflete
+            # a realidade depois que a fila drena (ver renderQuandoPronto em
+            # ui.js) — sem esperar aqui, is_disabled() pode ler um estado
+            # velho, de ANTES da última ação.
+            esperar_fila_fx_esvaziar(page, max_ms=3000)
             btn = page.query_selector("#btn-atacar")
             if btn and not btn.is_disabled():
-                btn.click()
-        page.wait_for_timeout(10)
+                clicar_se_possivel(btn)
+        esperar_fila_fx_esvaziar(page, max_ms=3000)
         btn_fase = page.query_selector("#btn-fase")
         if btn_fase and not btn_fase.is_disabled():
-            btn_fase.click()
+            clicar_se_possivel(btn_fase)
         page.wait_for_timeout(20)
     return page.evaluate("() => TCG.estado(window.game)")
 
@@ -661,24 +672,32 @@ def testar_dominio_aparece_em_partida_real(browser, max_seeds=15):
             estado = page.evaluate("() => TCG.estado(window.game)")
             if estado["fimDeJogo"]:
                 break
+            # mesmo cuidado de jogar_ate_o_fim: uma decisão pendente de
+            # verdade pro jogador local pode ainda não ter virado modal
+            # visível (atrás de animação/som — Animação, Som -> Estado).
+            pendente = page.evaluate("() => window.game.selection.algumaPendentePara(1) !== null")
+            if pendente:
+                esperar_modal_abrir(page, max_ms=20000, passo_ms=150)
             fechar_modal_se_aberto(page)
             if estado["fase"] == "TATICA":
                 cartas = page.query_selector_all(".mao-jogador .carta-mao")
                 if cartas:
                     clicar_se_possivel(cartas[0])
-                    page.wait_for_timeout(15)
+                    esperar_fila_fx_esvaziar(page, max_ms=3000)
                     fechar_modal_se_aberto(page)
             if estado["fase"] == "COMBATE":
+                esperar_fila_fx_esvaziar(page, max_ms=3000)  # o estado do botão só é confiável com a fila drenada
                 btn = page.query_selector("#btn-atacar")
                 if btn and not btn.is_disabled():
-                    btn.click()
+                    clicar_se_possivel(btn)
             if "com-dominio" in page.eval_on_selector("#tabuleiro-oponente", "el => el.className"):
                 vistos["oponente"] = True
             if "com-dominio" in page.eval_on_selector("#tabuleiro-jogador", "el => el.className"):
                 vistos["jogador"] = True
+            esperar_fila_fx_esvaziar(page, max_ms=3000)
             btn_fase = page.query_selector("#btn-fase")
             if btn_fase and not btn_fase.is_disabled():
-                btn_fase.click()
+                clicar_se_possivel(btn_fase)
             page.wait_for_timeout(15)
 
         assert not erros, f"seed={seed}: erros no console: {erros}"

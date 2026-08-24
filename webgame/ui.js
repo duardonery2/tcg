@@ -4,7 +4,17 @@
 // ja usado em gallery.html.
 var TCG = window.TCG || (window.TCG = {});
 
-TCG.criarUI = function criarUI(game, jogadorLocal) {
+// `opcoes` (multiplayer, ver webgame/rede.js): `acoes` substitui TCG.acoes
+// nos cliques do jogador LOCAL (no guest, cada função manda a intenção
+// pela rede em vez de mutar o jogo direto — só o host chama TCG.acoes.*
+// de verdade); `resolverSelecao` substitui game.selection.resolver() nas
+// respostas do jogador local aos modais (no guest, isso também vira uma
+// mensagem de rede, não uma resolução local — o guest não tem a seleção
+// pendente de verdade, só o host tem); `modoLocal = false` desliga o
+// piloto automático de bot (turno da "IA"/auto-resposta de seleção) —
+// em multiplayer isso é sempre um humano de verdade do outro lado.
+TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
+  const { acoes = TCG.acoes, resolverSelecao = (id, escolha) => game.selection.resolver(id, escolha), modoLocal = true } = opcoes;
   const el = (id) => document.getElementById(id);
   const oponenteId = TCG.oponenteDe(game, jogadorLocal);
 
@@ -71,14 +81,16 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   }
 
   function tentar(fn) {
-    staggerFx = 0; // cada acao do jogador/IA e sua propria sequencia de animacao
     try {
       fn();
     } catch (e) {
       if (e instanceof TCG.AcaoInvalida) log(`⚠ ${e.message}`);
       else throw e;
     } finally {
-      render();
+      // Animação, Som -> Estado (ver renderQuandoPronto/processarFilaFx,
+      // seção FX abaixo): não mostra o resultado da ação antes da animação
+      // que a representa terminar de tocar.
+      renderQuandoPronto();
     }
   }
 
@@ -216,7 +228,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
       carta: lado.monstro,
       classes: ["monstro"],
       onClick: ehLocal && podeAtivarHabilidade(lado.monstro)
-        ? () => tentar(() => TCG.acoes.ativarHabilidade(game, playerId, lado.monstro))
+        ? () => tentar(() => acoes.ativarHabilidade(game, playerId, lado.monstro))
         : null,
     }));
 
@@ -232,7 +244,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
         linhaMagia.appendChild(elSlot({
           carta: null, versoOculto: true, textoVerso: "Maldição virada para baixo",
           cartaPreview: ehLocal ? carta : null, // o dono sempre pode ver a própria; o oponente nunca
-          onClick: revelavel ? () => tentar(() => TCG.acoes.ativarMaldicaoSetada(game, playerId, carta)) : null,
+          onClick: revelavel ? () => tentar(() => acoes.ativarMaldicaoSetada(game, playerId, carta)) : null,
         }));
       } else {
         linhaMagia.appendChild(elSlot({ carta }));
@@ -272,27 +284,27 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // ha nada pra escolher (slot ja ocupado / Panteão vazio), sem exigir mais
   // um clique em "Próxima Fase" só pra sair dela.
   function avancarSeAindaNaoAcabou() {
-    if (!game.fimDeJogo) TCG.acoes.avancarFase(game);
-    render();
+    if (!game.fimDeJogo) acoes.avancarFase(game);
+    renderQuandoPronto(); // avancarFase pode entrar na Fase Tática e disparar passivos (statusAlterado)
   }
 
   function solicitarInvocacao() {
     if (game.fimDeJogo) return;
     if (game.board[jogadorLocal].monstro !== null) { avancarSeAindaNaoAcabou(); return; }
-    const opcoes = TCG.Deck.restantes(game.panteoes[jogadorLocal]);
-    if (!opcoes.length) { avancarSeAindaNaoAcabou(); return; }
+    const opcoesPanteao = TCG.Deck.restantes(game.panteoes[jogadorLocal]);
+    if (!opcoesPanteao.length) { avancarSeAindaNaoAcabou(); return; }
     game.selection.solicitar(
-      jogadorLocal, "Escolha um Combatente para invocar", opcoes,
+      jogadorLocal, "Escolha um Combatente para invocar", opcoesPanteao,
       (escolha) => {
         if (!escolha.length) { avancarSeAindaNaoAcabou(); return; } // pulou -> segue pra Tática
         try {
-          TCG.acoes.invocar(game, jogadorLocal, escolha[0]);
-          if (!game.fimDeJogo) TCG.acoes.avancarFase(game); // invocou -> segue pra Tática
+          acoes.invocar(game, jogadorLocal, escolha[0]);
+          if (!game.fimDeJogo) acoes.avancarFase(game); // invocou -> segue pra Tática
         } catch (e) {
           if (e instanceof TCG.AcaoInvalida) { log(`⚠ ${e.message}`); solicitarInvocacao(); return; }
           throw e;
         } finally {
-          render();
+          renderQuandoPronto(); // Animação, Som -> Estado — a invocação só aparece quando o voo termina
         }
       },
       0, 1
@@ -300,6 +312,14 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   }
   game.bus.on("faseAlterada", (e) => {
     if (e.faseNova === "INVOCACAO" && e.playerId === jogadorLocal) solicitarInvocacao();
+    // Pular a Fase de Recurso (só compra+mana automáticos, sem decisão)
+    // normalmente é disparado depois de CADA clique local (ver
+    // pularRecursoSeForAVez, chamado no handler de #btn-fase) — mas em
+    // multiplayer, quando é a vez do jogador local começar por uma
+    // transição de turno que chegou PELA REDE (não por um clique seu), não
+    // há clique nenhum pra disparar isso. Reagir aqui cobre os dois casos
+    // (é idempotente: pularRecursoSeForAVez já confere a fase antes de agir).
+    if (e.faseNova === "RECURSO" && e.playerId === jogadorLocal) tentar(pularRecursoSeForAVez);
   });
 
   function renderMao() {
@@ -316,7 +336,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
       comHoverPreview(div, carta);
       elCartaAtual.set(carta, div);
       if (jogavel && ["Domínio", "Encantamento", "Maldição"].includes(carta.tipo)) {
-        div.addEventListener("click", () => tentar(() => TCG.acoes.jogarCartaDeCampo(game, jogadorLocal, carta)));
+        div.addEventListener("click", () => tentar(() => acoes.jogarCartaDeCampo(game, jogadorLocal, carta)));
       }
       container.appendChild(div);
     }
@@ -381,7 +401,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
       img.addEventListener("click", () => {
         overlaySelecao.classList.remove("ativo");
         avancar();
-        tentar(() => game.selection.resolver(evento.requestId, [carta]));
+        tentar(() => resolverSelecao(evento.requestId, [carta]));
       });
       opcoesEl.appendChild(img);
     }
@@ -396,7 +416,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
       btnPular.addEventListener("click", () => {
         overlaySelecao.classList.remove("ativo");
         avancar();
-        tentar(() => game.selection.resolver(evento.requestId, []));
+        tentar(() => resolverSelecao(evento.requestId, []));
       });
       overlaySelecao.appendChild(btnPular);
     }
@@ -435,6 +455,12 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     const job = filaFx.shift();
     job(() => {
       filaFxOcupada = false;
+      // Animação, Som -> Estado: só AGORA que a animação (e o som) desse
+      // passo terminaram é que a tela passa a refletir a mudança de estado
+      // de verdade — até aqui, quem via a tela via a mão/tabuleiro de ANTES
+      // da ação, com a animação por cima mostrando a transição (ex.: uma
+      // carta jogada continua aparecendo na mão até o voo terminar).
+      render();
       // via setTimeout (não direto): evita empilhar a pilha de chamadas
       // quando vários jobs seguidos "avançam" na hora (alvo não encontrado
       // — ver os primitivos abaixo, todos chamam avancar() de graça nesse caso).
@@ -444,6 +470,14 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // pra scripts de teste conseguirem esperar a fila esvaziar de verdade em
   // vez de adivinhar um tempo fixo (ver scripts/testar_webgame_playwright.py).
   function filaFxVazia() { return !filaFxOcupada && filaFx.length === 0; }
+  // Chamado no lugar de render() direto por quem dispara uma ação: se nada
+  // foi enfileirado (ação sem efeito visual), reflete a mudança na hora,
+  // como sempre; senão, o PRÓPRIO job da fila chama render() quando termina
+  // (ver processarFilaFx acima) — aqui não faz nada, só evita mostrar o
+  // resultado final ANTES da animação que deveria precedê-lo.
+  function renderQuandoPronto() {
+    if (filaFxVazia()) render();
+  }
 
   // agrupa N jobs que devem tocar ao mesmo tempo (um único passo da fila);
   // só avança quando TODOS terminarem.
@@ -516,7 +550,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // visual), avança a fila na hora — nada a esperar.
   // `grande`: variante maior/mais demorada, usada pro impacto de dano —
   // ver style.css ".fx-pulso.grande" (fx-pulso-grande, 550ms).
-  function fxPulso(elemento, tipo, avancar, grande = false, duracaoMs = grande ? 550 : 320) {
+  function fxPulso(elemento, tipo, avancar, grande = false, duracaoMs = DURACAO_ANIMACAO) {
     if (!elemento) { avancar(); return; }
     elemento.style.setProperty("--fx-cor", corDe(tipo));
     elemento.style.setProperty("--fx-duracao", `${duracaoMs}ms`);
@@ -532,7 +566,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     elemento.addEventListener("animationend", terminar, { once: true });
     setTimeout(terminar, duracaoMs + 80);
   }
-  function fxShake(elemento, avancar, duracaoMs = 260) {
+  function fxShake(elemento, avancar, duracaoMs = DURACAO_ANIMACAO) {
     if (!elemento) { avancar(); return; }
     elemento.style.setProperty("--fx-duracao", `${duracaoMs}ms`);
     elemento.classList.add("fx-shake");
@@ -548,7 +582,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   }
 
   // "de camada": elementos soltos dentro de #fx-layer.
-  function fxSpawnGhost(rectOrigem, rectDestino, imgSrc, avancar, duracaoMs = 380) {
+  function fxSpawnGhost(rectOrigem, rectDestino, imgSrc, avancar, duracaoMs = DURACAO_ANIMACAO) {
     if (!rectOrigem || !rectDestino || !imgSrc) { avancar(); return; }
     const img = document.createElement("img");
     img.className = "fx-ghost";
@@ -566,7 +600,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     fxRemoverEAvancar(img, duracaoMs, avancar);
   }
   // `grande`: maior — usado pros números de dano (ver style.css ".fx-num.grande").
-  function fxSpawnNumero(rect, texto, tipo, avancar, grande = false, duracaoMs = grande ? 1100 : 700) {
+  function fxSpawnNumero(rect, texto, tipo, avancar, grande = false, duracaoMs = DURACAO_ANIMACAO) {
     if (!rect) { avancar(); return; }
     const div = document.createElement("div");
     div.className = "fx-num" + (grande ? " grande" : "");
@@ -578,7 +612,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     fxLayer.appendChild(div);
     fxRemoverEAvancar(div, duracaoMs, avancar);
   }
-  function fxSpawnAnel(rect, tipo, avancar, duracaoMs = 420) {
+  function fxSpawnAnel(rect, tipo, avancar, duracaoMs = DURACAO_ANIMACAO) {
     if (!rect) { avancar(); return; }
     const div = document.createElement("div");
     div.className = "fx-anel";
@@ -596,7 +630,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // só um flash — é o momento mais dramático de reagir a uma Maldição
   // setada, merece uma animação própria em vez de reaproveitar o anel de
   // destruição com outra cor.
-  function fxSpawnFlip(rect, imgSrc, avancar, duracaoMs = 620) {
+  function fxSpawnFlip(rect, imgSrc, avancar, duracaoMs = DURACAO_ANIMACAO) {
     if (!rect || !imgSrc) { avancar(); return; }
     const flip = document.createElement("div");
     flip.className = "fx-flip";
@@ -623,7 +657,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
 
   // Cura: um brilho suave que se expande, bem diferente do pulso seco de
   // buff/dano (fx-pulso) — a cura é reconfortante, não um impacto.
-  function fxSpawnBloom(rect, avancar, duracaoMs = 750) {
+  function fxSpawnBloom(rect, avancar, duracaoMs = DURACAO_ANIMACAO) {
     if (!rect) { avancar(); return; }
     const div = document.createElement("div");
     div.className = "fx-cura-bloom";
@@ -658,27 +692,13 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     cura: "LP increases.wav",
     efeito: "Card effect activates.wav",
   };
-  // duração real de cada .wav (medida com `wave` do Python — cabeçalho do
-  // arquivo, não estimativa) — a ANIMAÇÃO pareada usa exatamente essa
-  // duração (ver chamadas de fxSpawn*/fxPulso/fxShake abaixo), pra som e
-  // efeito visual começarem e terminarem juntos.
-  const DURACAO_SOM = {
-    invocar: 2300,
-    comprar: 410,
-    descartar: 280,
-    atacar: 1420,
-    dano: 1750,
-    vidaGanha: 1180,
-    habilidade: 2060,
-    dominio: 4350,
-    encantamento: 2060,
-    setar: 1610,
-    revelarMaldicao: 820,
-    destruirCombate: 1510,
-    destruirEfeito: 1890,
-    cura: 1180,
-    efeito: 2060,
-  };
+  // TODA animação dura exatamente 1s, não importa qual — o som pareado toca
+  // pela duração REAL dele (alguns são mais curtos, outros mais longos que
+  // 1s), mas o efeito visual sempre termina no mesmo tempo fixo. Antes a
+  // duração vinha do .wav (medida via `wave` do Python), mas isso deixava
+  // ações como Domínio (Field Spell.wav, 4.35s) bem mais lentas que outras
+  // — 1s uniforme é mais previsível.
+  const DURACAO_ANIMACAO = 1000;
   const cacheSons = {};
   function elementoSom(chave) {
     const arquivo = SONS[chave];
@@ -690,10 +710,10 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     }
     return cacheSons[chave];
   }
-  // Devolve a duração (ms) do som tocado — os call-sites usam o retorno
-  // direto como `duracaoMs` da animação pareada, pra impossibilitar os dois
-  // saírem dessincronizados (nunca dá pra tocar o som e esquecer de repassar
-  // a duração certa: é o mesmo valor, saindo do mesmo lugar).
+  // Toca o som (pela duração REAL dele — pode ser mais curto ou mais longo
+  // que a animação) e devolve DURACAO_ANIMACAO (1s), o que o call-site usa
+  // como `duracaoMs` do efeito visual pareado — nunca precisa lembrar o
+  // valor certo, é sempre o mesmo, saindo do mesmo lugar.
   function tocarSom(chave, volume = 0.55) {
     const base = elementoSom(chave);
     if (base) {
@@ -708,7 +728,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
         // ambiente sem suporte a Audio — silencioso, mesma ideia acima.
       }
     }
-    return DURACAO_SOM[chave] || 0;
+    return DURACAO_ANIMACAO;
   }
 
   // combatenteInvocado: voa do Panteão até o slot de Monstro — o slot já
@@ -961,13 +981,18 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     enfileirarFx((avancar) => renderOverlaySelecao(evento, avancar));
   });
 
-  // Qualquer selecao pedida ao lado que NAO e o jogador local (a IA) precisa
-  // ser resolvida por alguem — sem isso, uma selecao pedida durante o turno
-  // da IA (ex.: Ressurreição Arcana, ou a Maldição em resposta a um ataque,
-  // ver TCG.acoes.atacar) ficaria pendente pra sempre e travaria o jogo.
-  // Decide igual ao resto da IA: escolha aleatoria entre as opcoes legais.
+  // Qualquer selecao pedida ao lado que NAO e o jogador local precisa ser
+  // resolvida por alguem — sem isso, uma selecao pedida durante o turno do
+  // oponente (ex.: Ressurreição Arcana, ou a Maldição em resposta a um
+  // ataque) ficaria pendente pra sempre e travaria o jogo. SÓ em modo local
+  // (contra bot): decide igual ao resto da IA, escolha aleatória entre as
+  // opções legais. Em multiplayer (modoLocal=false) isso NUNCA roda — ou é
+  // o próprio rede.js do host que encaminha a decisão pro guest de
+  // verdade (webgame/rede.js), ou (do lado do guest) toda "selecaoPedida"
+  // que chega já tem playerId === jogadorLocal (só o host manda pro guest
+  // decisões que são DELE), então cai sempre no listener de cima.
   game.bus.on("selecaoPedida", (e) => {
-    if (e.playerId === jogadorLocal) return; // esse caso quem trata e renderOverlaySelecao
+    if (!modoLocal || e.playerId === jogadorLocal) return; // esse caso quem trata e renderOverlaySelecao
     const opcoes = e.minimo === 0 ? [...e.opcoes, null] : e.opcoes;
     const escolha = game.rng.choice(opcoes);
     game.selection.resolver(e.requestId, escolha === null ? [] : [escolha]);
@@ -979,19 +1004,23 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // passa direto pra Invocação sozinha, sem exigir um clique so pra "sair" dela.
   function pularRecursoSeForAVez() {
     if (!game.fimDeJogo && game.jogadorDaVez === jogadorLocal && game.fase === "RECURSO") {
-      TCG.acoes.avancarFase(game);
+      acoes.avancarFase(game);
     }
   }
 
-  el("btn-atacar").addEventListener("click", () => tentar(() => TCG.acoes.atacar(game, jogadorLocal, oponenteId)));
+  el("btn-atacar").addEventListener("click", () => tentar(() => acoes.atacar(game, jogadorLocal, oponenteId)));
   el("btn-fase").addEventListener("click", () => {
     // "Próxima Fase" avança um passo só; só na Fase de Combate o botão vira
     // "Fim de Turno" e de fato fecha o turno do jogador local (terminarTurno
     // consome o resto da Fase de Combate e entrega a vez ao oponente).
-    if (game.fase === "COMBATE") tentar(() => TCG.acoes.terminarTurno(game));
-    else tentar(() => TCG.acoes.avancarFase(game));
+    if (game.fase === "COMBATE") tentar(() => acoes.terminarTurno(game));
+    else tentar(() => acoes.avancarFase(game));
 
-    if (!game.fimDeJogo && game.jogadorDaVez === oponenteId) {
+    // Só em modo local (contra bot) o clique do jogador dispara o turno
+    // inteiro do "oponente" ali mesmo — em multiplayer o turno do outro
+    // jogador acontece de forma assíncrona, por intents chegando pela
+    // rede (ver webgame/rede.js), nunca sincronamente aqui.
+    if (modoLocal && !game.fimDeJogo && game.jogadorDaVez === oponenteId) {
       tentar(() => TCG.executarTurnoIA(game, oponenteId));
     }
     tentar(pularRecursoSeForAVez);

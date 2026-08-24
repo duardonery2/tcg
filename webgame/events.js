@@ -6,6 +6,7 @@ var TCG = window.TCG || (window.TCG = {});
 TCG.EventBus = class EventBus {
   constructor() {
     this._ouvintes = {};
+    this._ouvintesGlobais = []; // ver onQualquer — usado pelo relay de multiplayer (rede.js)
     this.historico = [];
   }
 
@@ -21,10 +22,19 @@ TCG.EventBus = class EventBus {
     if (i >= 0) lista.splice(i, 1);
   }
 
+  // Chamado pra TODO evento, de qualquer tipo — usado pelo host em
+  // multiplayer (webgame/rede.js) pra repassar cada evento emitido pro
+  // guest, sem precisar listar/manter uma lista de tipos separada aqui.
+  onQualquer(callback) {
+    this._ouvintesGlobais.push(callback);
+    return callback;
+  }
+
   emit(tipo, payload = {}) {
     const evento = { tipo, ...payload };
     this.historico.push(evento);
     for (const cb of this._ouvintes[tipo] || []) cb(evento);
+    for (const cb of this._ouvintesGlobais) cb(evento);
     // A "pilha de eventos" e o proprio `historico` acima; a cada evento
     // publicado, roda a lista de gatilhos registrados (ver triggers.js) pra
     // ver se algum bate com este tipo de evento.
