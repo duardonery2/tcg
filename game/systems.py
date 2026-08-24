@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Systems de regra geral (nao ligados a uma carta especifica):
-- ResourceSystem: compra + mana no inicio da Fase de Saque.
+- ResourceSystem: compra na entrada da Fase de Saque, mana na entrada da
+  Fase de Invocacao (GAME_DESIGN.md).
 - CombatSystem: resolve um ataque (vantagem elemental + POW vs RES).
 - DestructionSystem: move uma carta pro destino certo e avisa geral.
 """
@@ -23,7 +24,8 @@ MANA_POR_TURNO = 2
 
 
 class ResourceSystem(System):
-    """Fase de Saque: compra 1 carta do Baralho Arcano + 2 de Mana."""
+    """Fase de Saque: compra 1 carta do Baralho Arcano.
+    Fase de Invocacao: credita 2 de Mana na reserva do jogador da vez."""
 
     def __init__(self, bus: EventBus, baralhos: dict[int, Deck], players: dict[int, PlayerState]):
         self.baralhos = baralhos
@@ -36,14 +38,20 @@ class ResourceSystem(System):
         self._world_ref = world
 
     def _on_phase_changed(self, event: PhaseChanged) -> None:
-        if event.fase_nova is not Fase.SAQUE or self._world_ref is None:
+        if self._world_ref is None:
             return
+        if event.fase_nova is Fase.INVOCACAO:
+            player_id = event.player_id
+            ps = self.players[player_id]
+            ps.mana += MANA_POR_TURNO
+            self.bus.publish(ManaChanged(player_id=player_id, delta=MANA_POR_TURNO, total=ps.mana))
+            return
+        if event.fase_nova is not Fase.SAQUE:
+            return
+
         world = self._world_ref
         player_id = event.player_id
         ps = self.players[player_id]
-
-        ps.mana += MANA_POR_TURNO
-        self.bus.publish(ManaChanged(player_id=player_id, delta=MANA_POR_TURNO, total=ps.mana))
 
         baralho = self.baralhos[player_id]
         try:

@@ -22,8 +22,8 @@ Cada duelista entra na arena portando dois conjuntos distintos de forças:
 
 O duelo ocorre em turnos sequenciais, divididos rigorosamente em cinco fases:
 
-1. **Fase de Saque:** O jogador da vez compra 1 carta do Baralho Arcano e recebe 2 de Mana para sua reserva. Não há decisão nenhuma aqui — a fase passa direto para a de Invocação assim que compra e mana são creditados.
-2. **Fase de Invocação:** O feiticeiro pode pagar o custo necessário para trazer um combatente do Panteão para a arena.
+1. **Fase de Saque:** O jogador da vez compra 1 carta do Baralho Arcano. Não há decisão nenhuma aqui — a fase passa direto para a de Invocação assim que a compra é resolvida.
+2. **Fase de Invocação:** O jogador da vez recebe 2 de Mana para sua reserva, e o feiticeiro pode pagar o custo necessário para trazer um combatente do Panteão para a arena.
 3. **Fase Principal:** Momento de usar magias. Pode-se ativar um **Domínio** (destruindo o domínio anterior, pois só pode haver um ativo na mesa), jogar **Encantamentos** da mão ou baixar **Maldições** viradas para baixo (armadilhas ativadas apenas no turno do inimigo).
 4. **Fase de Batalha:** O jogador declara um ataque, confrontando a Habilidade de Combate do seu combatente contra a Resistência do inimigo.
 5. **Fase Final:** Fase de limpeza, sem ação do jogador. Todo efeito temporário com duração "neste turno"/"até fim de turno" (buffs e debuffs de Habilidade, Encantamento ou Maldição, dos dois lados do campo) expira exatamente aqui — ao fim do turno em que foi aplicado, nunca um turno inteiro depois. Terminada a Fase Final, a vez passa ao oponente e o turno dele começa de novo pela Fase de Saque.

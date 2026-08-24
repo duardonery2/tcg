@@ -312,7 +312,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
   }
   game.bus.on("faseAlterada", (e) => {
     if (e.faseNova === "INVOCACAO" && e.playerId === jogadorLocal) solicitarInvocacao();
-    // Pular a Fase de Saque (só compra+mana automáticos, sem decisão)
+    // Pular a Fase de Saque (só compra automática, sem decisão)
     // normalmente é disparado depois de CADA clique local (ver
     // pularRecursoSeForAVez, chamado no handler de #btn-fase) — mas em
     // multiplayer, quando é a vez do jogador local começar por uma
@@ -1000,7 +1000,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
 
   // ---- botoes -----------------------------------------
 
-  // A Fase de Saque e so compra+mana automaticos, sem decisao do jogador —
+  // A Fase de Saque e so a compra automatica, sem decisao do jogador —
   // passa direto pra Invocação sozinha, sem exigir um clique so pra "sair" dela.
   function pularRecursoSeForAVez() {
     if (!game.fimDeJogo && game.jogadorDaVez === jogadorLocal && game.fase === "SAQUE") {

@@ -51,8 +51,8 @@ class Zona(Enum):
 
 
 class Fase(Enum):
-    SAQUE = auto()       # compra + mana automaticos (era "Recurso")
-    INVOCACAO = auto()
+    SAQUE = auto()       # compra automatica (era "Recurso")
+    INVOCACAO = auto()   # credita 2 de Mana + invocar um combatente do Panteão
     PRINCIPAL = auto()   # magias: Dominio/Encantamento/Maldicao (era "Tatica")
     BATALHA = auto()     # declarar ataque (era "Combate")
     FINAL = auto()       # limpeza de fim de turno: expira buffs "neste turno"

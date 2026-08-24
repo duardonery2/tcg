@@ -311,11 +311,14 @@ TCG.avancarFase = function avancarFase(game) {
 
   if (game.fase === "SAQUE") {
     zerarFlagsDeTurno(game);
+    TCG.comprar(game, jogadorDoTurnoQueEntra, 1, "turno");
+    if (anterior === "FINAL") game.bus.emit("turnoIniciado", { playerId: game.jogadorDaVez, numeroTurno: game.turno });
+  }
+
+  if (game.fase === "INVOCACAO") {
     const ps = game.players[jogadorDoTurnoQueEntra];
     ps.mana += TCG.MANA_POR_TURNO;
     game.bus.emit("manaAlterada", { playerId: jogadorDoTurnoQueEntra, delta: TCG.MANA_POR_TURNO, total: ps.mana });
-    TCG.comprar(game, jogadorDoTurnoQueEntra, 1, "turno");
-    if (anterior === "FINAL") game.bus.emit("turnoIniciado", { playerId: game.jogadorDaVez, numeroTurno: game.turno });
   }
 
   if (game.fase === "PRINCIPAL") TCG.aplicarPassivos(game);
