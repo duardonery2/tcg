@@ -267,6 +267,18 @@ button.acao:disabled { opacity: 0.4; cursor: not-allowed; }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 
+/* variante maior/mais demorada — usada no impacto de dano (ver ui.js,
+   fxPulso(..., true)): o momento mais importante de acompanhar na partida. */
+.fx-pulso.grande {
+  animation: fx-pulso-grande 550ms ease-out both;
+  animation-delay: var(--fx-atraso, 0ms);
+}
+@keyframes fx-pulso-grande {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--fx-cor, var(--fx-dano)) 80%, transparent); transform: scale(1); }
+  30%  { box-shadow: 0 0 0 14px color-mix(in srgb, var(--fx-cor, var(--fx-dano)) 60%, transparent); transform: scale(1.05); }
+  100% { box-shadow: 0 0 0 0 transparent; transform: scale(1); }
+}
+
 .fx-shake {
   animation: fx-shake 260ms ease-in-out both;
   animation-delay: var(--fx-atraso, 0ms);
@@ -309,6 +321,27 @@ button.acao:disabled { opacity: 0.4; cursor: not-allowed; }
   0%   { transform: translate(-50%, 0); opacity: 0; }
   15%  { opacity: 1; }
   100% { transform: translate(-50%, -34px); opacity: 0; }
+}
+
+/* variante maior/mais demorada — usada nos números de dano (ver ui.js,
+   fxSpawnNumero(..., true)): maior, some mais devagar, com um leve "pop"
+   de entrada em vez de só flutuar. */
+.fx-num.grande {
+  font-size: 1.9rem;
+  /* contorno preto em várias direções (não só um blur embaixo) — sem isso o
+     número some em cima de artes de carta com tons parecidos com --fx-dano */
+  text-shadow:
+    -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000,
+    -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000,
+    0 2px 6px rgba(0, 0, 0, 0.9);
+  animation: fx-float-num-grande 1100ms ease-out both;
+  animation-delay: var(--fx-atraso, 0ms);
+}
+@keyframes fx-float-num-grande {
+  0%   { transform: translate(-50%, 0) scale(0.75); opacity: 0; }
+  12%  { transform: translate(-50%, -6px) scale(1.15); opacity: 1; }
+  30%  { transform: translate(-50%, -10px) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -58px) scale(1); opacity: 0; }
 }
 
 .fx-anel {

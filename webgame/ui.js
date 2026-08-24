@@ -429,6 +429,23 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   function rectLinhaMagia(playerId) { return rectDe(`#${containerIdDe(playerId)} .linha-magia`); }
   function rectInfoLado(playerId) { return rectDe(`#${containerIdDe(playerId)} .info-lado`); }
   function rectMaoLocal() { return rectDe("#mao-jogador"); }
+  // destino da animação de compra: um retângulo do TAMANHO de uma carta
+  // (não a mão inteira, que esticaria a arte) — ancorado onde a carta nova
+  // realmente vai cair (a última posição da mão, já que renderMao() sempre
+  // adiciona na ordem de game.players[jogadorLocal].mao); com a mão vazia,
+  // aproxima pelo tamanho real de .carta-mao (14vh, 5:7 — ver style.css).
+  function rectProximoSlotDeMao() {
+    const maoRect = rectMaoLocal();
+    if (!maoRect) return null;
+    const cartas = document.querySelectorAll("#mao-jogador .carta-mao");
+    if (cartas.length) {
+      const ultima = cartas[cartas.length - 1].getBoundingClientRect();
+      return { left: maoRect.right - ultima.width, top: ultima.top, width: ultima.width, height: ultima.height };
+    }
+    const altura = window.innerHeight * 0.14;
+    const largura = altura * (5 / 7);
+    return { left: maoRect.left + maoRect.width / 2 - largura / 2, top: maoRect.bottom - altura, width: largura, height: altura };
+  }
 
   function fxRemoverDepois(elemento, vidaMs) {
     let removido = false;
@@ -447,14 +464,17 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   }
 
   // "em lugar": pulso/aviso num elemento que já está no layout normal.
-  function fxPulso(elemento, tipo, delayMs) {
+  // `grande`: variante maior/mais demorada, usada pro impacto de dano —
+  // ver style.css ".fx-pulso.grande" (fx-pulso-grande, 550ms).
+  function fxPulso(elemento, tipo, delayMs, grande = false) {
     if (!elemento) return;
     elemento.style.setProperty("--fx-cor", corDe(tipo));
     elemento.style.setProperty("--fx-atraso", `${delayMs}ms`);
     elemento.classList.add("fx-pulso");
-    const limpar = () => elemento.classList.remove("fx-pulso");
+    if (grande) elemento.classList.add("grande");
+    const limpar = () => elemento.classList.remove("fx-pulso", "grande");
     elemento.addEventListener("animationend", limpar, { once: true });
-    setTimeout(limpar, delayMs + 400);
+    setTimeout(limpar, delayMs + (grande ? 650 : 400));
   }
   function fxShake(elemento, delayMs) {
     if (!elemento) return;
@@ -484,17 +504,19 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     fxLayer.appendChild(img);
     fxRemoverDepois(img, delayMs + duracaoMs);
   }
-  function fxSpawnNumero(rect, texto, tipo, delayMs) {
+  // `grande`: maior e some mais devagar — usado pros números de dano (ver
+  // style.css ".fx-num.grande", fx-float-num-grande, 1100ms).
+  function fxSpawnNumero(rect, texto, tipo, delayMs, grande = false) {
     if (!rect) return;
     const div = document.createElement("div");
-    div.className = "fx-num";
+    div.className = "fx-num" + (grande ? " grande" : "");
     div.textContent = texto;
     div.style.left = `${rect.left + rect.width / 2}px`;
     div.style.top = `${rect.top + rect.height * 0.25}px`;
     div.style.setProperty("--fx-cor", corDe(tipo));
     div.style.setProperty("--fx-atraso", `${delayMs}ms`);
     fxLayer.appendChild(div);
-    fxRemoverDepois(div, delayMs + 700);
+    fxRemoverDepois(div, delayMs + (grande ? 1100 : 700));
   }
   function fxSpawnAnel(rect, tipo, delayMs) {
     if (!rect) return;
@@ -516,12 +538,13 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     fxSpawnGhost(rectPilha(e.playerId, "panteao"), rectMonstro(e.playerId), e.carta.arquivo, proximoAtraso());
   });
 
-  // cartaComprada: só voa até a mão pro jogador LOCAL (a mão do oponente não
-  // tem slots por carta pra mirar) — do lado do oponente, só um pulso na
-  // pilha do Baralho dele.
+  // cartaComprada: mesmo tratamento do summon (Baralho -> um retângulo do
+  // tamanho de uma carta, não a mão inteira esticada) — só que voando pro
+  // jogador LOCAL; a mão do oponente não tem slots por carta pra mirar, só
+  // um pulso na pilha do Baralho dele.
   game.bus.on("cartaComprada", (e) => {
-    const delay = proximoAtraso(60);
-    if (e.playerId === jogadorLocal) fxSpawnGhost(rectPilha(e.playerId, "baralho"), rectMaoLocal(), e.carta.arquivo, delay, 340);
+    const delay = proximoAtraso();
+    if (e.playerId === jogadorLocal) fxSpawnGhost(rectPilha(e.playerId, "baralho"), rectProximoSlotDeMao(), e.carta.arquivo, delay);
     else fxPulso(document.querySelector(`#${containerIdDe(e.playerId)} [data-pilha="baralho"] .slot`), "destaque", delay);
   });
 
@@ -564,7 +587,9 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
 
   // danoCausado + vidaAlterada: o número flutuante aparece UMA vez só — se
   // vidaAlterada é o gêmeo direto do dano que acabou de aparecer (mesmo
-  // jogador, mesma quantidade em módulo), não duplica.
+  // jogador, mesma quantidade em módulo), não duplica. Dano usa a variante
+  // "grande" (maior e fica mais tempo na tela, ver style.css) — é o
+  // impacto mais importante de acompanhar numa partida.
   let ultimoDanoDireto = null;
   game.bus.on("danoCausado", (e) => {
     const delay = proximoAtraso();
@@ -572,11 +597,11 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     if (e.alvo) {
       const elemento = elCartaAtual.get(e.alvo);
       if (elemento) {
-        fxPulso(elemento, "dano", delay);
-        fxSpawnNumero(elemento.getBoundingClientRect(), `-${e.quantidade}`, "dano", delay);
+        fxPulso(elemento, "dano", delay, true);
+        fxSpawnNumero(elemento.getBoundingClientRect(), `-${e.quantidade}`, "dano", delay, true);
       }
     } else {
-      fxSpawnNumero(rectInfoLado(e.alvoPlayer), `-${e.quantidade}`, "dano", delay);
+      fxSpawnNumero(rectInfoLado(e.alvoPlayer), `-${e.quantidade}`, "dano", delay, true);
     }
   });
   game.bus.on("vidaAlterada", (e) => {
@@ -585,7 +610,8 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
       return;
     }
     const delay = proximoAtraso(70);
-    fxSpawnNumero(rectInfoLado(e.playerId), `${e.delta >= 0 ? "+" : ""}${e.delta}`, e.delta >= 0 ? "cura" : "dano", delay);
+    const perda = e.delta < 0;
+    fxSpawnNumero(rectInfoLado(e.playerId), `${e.delta >= 0 ? "+" : ""}${e.delta}`, perda ? "dano" : "cura", delay, perda);
   });
 
   // habilidadeAtivada: brilho no próprio combatente que ativou.

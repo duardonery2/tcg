@@ -1143,8 +1143,9 @@ def testar_fx_nao_deixa_no_ao_longo_de_partida_completa(browser):
     estado_final = jogar_ate_o_fim(page)
     # espera folgada: um turno de IA agitado pode escalonar vários eventos até
     # o teto de atraso (480ms, ver proximoAtraso em ui.js) + a duração do
-    # efeito mais longo (fx-num, 700ms) + a margem de segurança do fallback.
-    page.wait_for_timeout(1500)
+    # efeito mais longo (fx-num "grande", de dano, 1100ms) + a margem de
+    # segurança do fallback de limpeza (80ms).
+    page.wait_for_timeout(2000)
     sobrando = page.eval_on_selector_all("#fx-layer > *", "els => els.length")
 
     assert estado_final["fimDeJogo"], f"partida nao terminou: {estado_final}"
