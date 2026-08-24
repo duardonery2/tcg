@@ -12,7 +12,8 @@ Ordem das fases por turno (GAME_DESIGN.md, 'A Estrutura do Turno'):
 from __future__ import annotations
 
 from .components import (
-    AbilityCost, CombatStats, Duracao, Fase, StatusEffects, TurnState,
+    AbilityCost, CombatStats, DanoDobradoContraMonstro, Duracao, Fase,
+    StatusEffects, TurnState,
 )
 from .ecs import System, World
 from .events import EventBus, PhaseChanged, TurnStarted
@@ -103,6 +104,12 @@ class UpkeepSystem(System):
                 if len(restantes) != len(statuses.itens):
                     statuses.itens = restantes
                     _recalcular_stats(world, eid)
+            # DanoDobradoContraMonstro (Sigurd) e sempre NESTE_TURNO por
+            # natureza — a mera presenca do componente já significa "ainda
+            # não expirou"; remove incondicionalmente, sem precisar de campo
+            # de duracao proprio.
+            for eid, _ in list(world.query(DanoDobradoContraMonstro)):
+                world.remove_component(eid, DanoDobradoContraMonstro)
 
     def update(self, world: World, **ctx) -> None:
         self.bind(world)

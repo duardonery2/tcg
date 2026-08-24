@@ -8,9 +8,9 @@
 from __future__ import annotations
 
 from .components import (
-    AttackNegated, CardInfo, CombatStats, DamageReflected, Elemento,
-    ElementoOverride, Fase, IgnoraFraquezaElemental, Location, PlayerState,
-    VANTAGEM_ELEMENTAL, Zona,
+    AttackNegated, CardInfo, CombatStats, DamageReflected, DanoDobradoContraMonstro,
+    Elemento, ElementoOverride, Fase, IgnoraFraquezaElemental, Location,
+    PlayerState, Tipo, VANTAGEM_ELEMENTAL, Zona,
 )
 from .deck import Deck, DeckEmptyError
 from .ecs import System, World
@@ -146,6 +146,14 @@ class CombatSystem:
         elem_d = elemento_efetivo(world, defensor)
         if VANTAGEM_ELEMENTAL.get(elem_a) == elem_d and not world.has_component(defensor, IgnoraFraquezaElemental):
             dano = int(dano * 1.5)  # vantagem elemental: dano ampliado
+
+        # Sigurd ("Matador de Feras"): a Habilidade dele so prepara o buff
+        # (DanoDobradoContraMonstro, NESTE_TURNO); o dano so dobra de verdade
+        # se ele ATACAR um Monstro antes do buff expirar na Fase Final.
+        if world.has_component(atacante, DanoDobradoContraMonstro):
+            info_d = world.get_component(defensor, CardInfo)
+            if info_d and info_d.tipo is Tipo.MONSTRO:
+                dano *= 2
 
         alvo_dano = defensor
         alvo_dano_player = defensor_player

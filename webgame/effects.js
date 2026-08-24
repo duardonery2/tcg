@@ -156,10 +156,15 @@ reg("Odisseu", (game, playerId, carta) => {
   game._protecaoMaldicao.add(playerId);
 });
 
+// "Matador de Feras: Dano em dobro contra Monstros" — a Habilidade só
+// PREPARA o buff (NESTE_TURNO); o dano dobrado só sai de verdade se Sigurd
+// de fato ATACAR um Monstro antes do fim do turno (TCG.resolverAtaque, em
+// engine.js, dobra o dano de combate nessa condição). Sem isso, "Dano em
+// dobro" virava um nuke avulso que não exigia ataque nenhum — não bate com
+// o texto nem com o resto do vocabulário do jogo (GAME_DESIGN.md separa
+// Habilidade de Ataque).
 reg("Sigurd", (game, playerId, carta) => {
-  const oponente = TCG.oponenteDe(game, playerId);
-  const alvo = TCG.combatenteAtivo(game, oponente);
-  if (alvo && alvo.tipo === "Monstro") TCG.danoCombatente(game, alvo, carta.atualPow, "Matador de Feras");
+  carta.danoDobradoContraMonstro = true;
 });
 
 reg("Joana d'Arc", (game, playerId, carta) => {

@@ -203,6 +203,17 @@ class IgnoraFraquezaElemental:
 
 
 @dataclass
+class DanoDobradoContraMonstro:
+    """Flag NESTE_TURNO no ATACANTE (Sigurd, "Matador de Feras: Dano em
+    dobro contra Monstros"): ativar a Habilidade so prepara o buff — o dano
+    dobrado só sai de verdade se esse combatente ATACAR um Monstro antes do
+    fim do turno (CombatSystem.resolver). Removida incondicionalmente na
+    entrada da Fase Final (UpkeepSystem), sem precisar de um campo de
+    duracao proprio — sempre dura só até lá."""
+    pass
+
+
+@dataclass
 class TurnState:
     jogador_da_vez: int
     fase: Fase = Fase.SAQUE

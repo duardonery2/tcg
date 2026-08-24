@@ -35,8 +35,8 @@ from typing import Callable
 
 from .components import (
     AbilityCost, AttackNegated, CardInfo, CombatStats,
-    DamageReflected, Duracao, Elemento, ElementoOverride, FaceDown,
-    IgnoraFraquezaElemental, Location, ManaCost,
+    DamageReflected, DanoDobradoContraMonstro, Duracao, Elemento,
+    ElementoOverride, FaceDown, IgnoraFraquezaElemental, Location, ManaCost,
     StatusEffect, StatusEffects, Tipo, Zona,
 )
 from .deck import DeckEmptyError
@@ -289,11 +289,14 @@ def _(ctrl, player_id, card, evento=None):
 
 @EFFECTS.registrar("Sigurd")
 def _(ctrl, player_id, card, evento=None):
-    alvo = combatente_ativo(ctrl, _oponente(ctrl, player_id))
-    if alvo is not None:
-        info = ctrl.world.get_component(alvo, CardInfo)
-        if info and info.tipo is Tipo.MONSTRO:
-            dano_combatente(ctrl, alvo, ctrl.world.get_component(card, CombatStats).atual_pow, "Matador de Feras")
+    # "Matador de Feras: Dano em dobro contra Monstros" — a Habilidade só
+    # PREPARA o buff (NESTE_TURNO); o dano dobrado só sai de verdade se
+    # Sigurd de fato ATACAR um Monstro antes do fim do turno
+    # (CombatSystem.resolver dobra o dano de combate nessa condição). Sem
+    # isso, "Dano em dobro" virava um nuke avulso que não exigia ataque
+    # nenhum — não bate com o texto nem com o resto do vocabulário do jogo
+    # (GAME_DESIGN.md separa Habilidade de Ataque).
+    ctrl.world.add_component(card, DanoDobradoContraMonstro())
 
 
 @EFFECTS.registrar("Joana d'Arc")

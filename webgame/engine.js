@@ -26,6 +26,7 @@ TCG.criarCardInstance = function criarCardInstance(template) {
     attackNegated: false,
     damageReflected: false,
     ignoraFraquezaElemental: false,
+    danoDobradoContraMonstro: false, // Sigurd (Matador de Feras), NESTE_TURNO
     instanceId: _proximoInstanceId++,
   };
 };
@@ -288,6 +289,10 @@ function expirarBuffsDeFimDeTurno(game) {
         (st) => st.duracao !== "NESTE_TURNO" && st.duracao !== "ATE_FIM_DE_TURNO"
       );
       if (carta.statusEffects.length !== antes) TCG.recalcularStats(carta);
+      // danoDobradoContraMonstro (Sigurd) e sempre NESTE_TURNO por natureza
+      // — a mera flag ligada já significa "ainda não expirou"; não precisa
+      // de campo de duração próprio, sempre desliga incondicionalmente aqui.
+      carta.danoDobradoContraMonstro = false;
     }
   }
 }
@@ -362,6 +367,11 @@ TCG.resolverAtaque = function resolverAtaque(game, atacantePlayer, atacante, def
   const elemA = TCG.elementoEfetivo(atacante);
   const elemD = TCG.elementoEfetivo(defensor);
   if (TCG.VANTAGEM_ELEMENTAL[elemA] === elemD && !defensor.ignoraFraquezaElemental) dano = Math.floor(dano * 1.5);
+
+  // Sigurd ("Matador de Feras"): a Habilidade dele so prepara o buff
+  // (danoDobradoContraMonstro, NESTE_TURNO); o dano so dobra de verdade se
+  // ele ATACAR um Monstro antes do buff expirar na Fase Final.
+  if (atacante.danoDobradoContraMonstro && defensor.tipo === "Monstro") dano *= 2;
 
   let alvoDano = defensor, alvoDanoPlayer = defensorPlayer;
   if (defensor.damageReflected) { alvoDano = atacante; alvoDanoPlayer = atacantePlayer; }
