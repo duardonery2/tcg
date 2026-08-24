@@ -49,8 +49,12 @@ main {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  /* "space-between" grudava Descarte/Baralho/Panteão nas bordas do painel,
+     bem longe do quadro de campo no meio (o vão crescia sozinho conforme a
+     janela ficava mais larga). "center" com um gap generoso aproxima as
+     pilhas do centro, mantendo cada uma do seu lado (esquerda/direita). */
+  justify-content: center;
+  gap: 3.2vw;
   padding: 0.6vh 14px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -99,7 +103,10 @@ main {
 }
 
 .tabuleiro-centro {
-  flex: 1 1 auto;
+  /* sem flex-grow: o bloco só ocupa o espaço do próprio conteúdo (o rótulo +
+     o quadro de campo), pra "center" no .tabuleiro (acima) agrupar tudo no
+     meio em vez de esticar isso e empurrar as pilhas pras bordas. */
+  flex: 0 1 auto;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 0.6vh; min-width: 0;
 }
@@ -108,6 +115,19 @@ main {
    um do mesmo tamanho de um slot normal, só virado pra baixo com o número
    de cartas centralizado por cima. */
 .pilhas-laterais { display: flex; flex-direction: column; gap: 0.8vh; align-items: center; flex: 0 0 auto; }
+
+/* O "quadro de campo" agrupa o combatente ativo + as 5 magias num único
+   componente visual (fundo/borda próprios) — antes os slots ficavam soltos
+   direto sobre o fundo da cena/Domínio, sem nada que os separasse das
+   pilhas laterais ou do resto do tabuleiro. */
+.quadro-de-campo {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.8vh;
+  background: rgba(12, 10, 8, 0.4);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1vh 1.4vw;
+}
 
 .linha-magia { display: flex; gap: 10px; }
 .linha-monstro { display: flex; gap: 16px; align-items: center; }

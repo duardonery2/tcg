@@ -251,17 +251,25 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
       }
     });
 
+    // Combatente + magias vivem juntos dentro de um único "quadro de campo"
+    // (fundo e borda próprios) — separa visualmente esse bloco de slots do
+    // resto do tabuleiro (fundo do Domínio, pilhas laterais), em vez de
+    // flutuarem soltos sobre o fundo da cena.
+    const quadroDeCampo = document.createElement("div");
+    quadroDeCampo.className = "quadro-de-campo";
+
     // Tabuleiro do oponente fica espelhado: o combatente dele fica na borda
     // de baixo do quadro (perto do centro da tela), de frente pro combatente
     // do jogador local, que fica na borda de cima do proprio quadro — as
     // duas criaturas se encaram atraves do meio do tabuleiro.
     if (ehLocal) {
-      centro.appendChild(linhaMonstro);
-      centro.appendChild(linhaMagia);
+      quadroDeCampo.appendChild(linhaMonstro);
+      quadroDeCampo.appendChild(linhaMagia);
     } else {
-      centro.appendChild(linhaMagia);
-      centro.appendChild(linhaMonstro);
+      quadroDeCampo.appendChild(linhaMagia);
+      quadroDeCampo.appendChild(linhaMonstro);
     }
+    centro.appendChild(quadroDeCampo);
 
     const pilhaDireita = document.createElement("div");
     pilhaDireita.className = "pilhas-laterais";
