@@ -1284,6 +1284,43 @@ def testar_fx_dominio_do_oponente_nao_voa_da_mao_local(browser):
     print("OK  Domínio ativado pelo oponente anima a partir do lado dele, não da mão do jogador local")
 
 
+def testar_sons_tocam_junto_com_as_animacoes(browser):
+    """Cada evento com animação também dispara o som certo (ver sound/ na
+    raiz do projeto e a tabela SONS em ui.js), no MESMO instante que a
+    animação — confirmado observando as requisições de rede pros .wav
+    (new Audio(...)/cloneNode não deixa rastro de DOM pra checar direto)."""
+    page = browser.new_page(viewport={"width": 1400, "height": 900})
+    erros = []
+    page.on("pageerror", lambda e: erros.append(str(e)))
+    page.on("console", lambda m: erros.append(m.text) if m.type == "error" else None)
+    sons_pedidos = []
+    page.on("request", lambda r: sons_pedidos.append(r.url.split("/")[-1]) if ".wav" in r.url else None)
+    page.goto(INDEX + "?seed=42")
+    page.wait_for_timeout(200)
+    imgs = page.query_selector_all("#selecao-opcoes img")
+    imgs[0].click()  # invocar -> som "Special Summon"
+    page.wait_for_timeout(150)
+
+    page.evaluate("""() => {
+        const g = window.game;
+        const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
+        const atacante = acharCarta('Rei Arthur');
+        g.board[1].monstro = atacante;
+        window.ui.render();
+        g.bus.emit('ataqueDeclarado', { atacantePlayer: 1, atacante, defensorPlayer: 2, defensor: null });
+        g.bus.emit('danoCausado', { quantidade: 9, alvo: null, alvoPlayer: 2 });
+    }""")
+    page.wait_for_timeout(1300)
+
+    vistos = {s.replace("%20", " ") for s in sons_pedidos}
+    print("sons pedidos:", sorted(vistos))
+    esperados = {"Special Summon.wav", "Attack.wav", "Damage.wav"}
+    assert esperados.issubset(vistos), f"faltou algum som esperado: pedidos={vistos}"
+    assert not erros, f"erros no console: {erros}"
+    page.close()
+    print("OK  sons tocam junto com as animações certas (invocar/atacar/dano)")
+
+
 def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -1310,6 +1347,7 @@ def main():
         testar_fx_nao_deixa_no_apos_uma_rajada_de_eventos(browser)
         testar_fx_fila_toca_eventos_em_sequencia_sem_descartar(browser)
         testar_fx_dominio_do_oponente_nao_voa_da_mao_local(browser)
+        testar_sons_tocam_junto_com_as_animacoes(browser)
         testar_partida_completa(browser)
         browser.close()
     print("\nTODOS OS TESTES PASSARAM")

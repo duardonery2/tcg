@@ -627,10 +627,59 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     fxRemoverEAvancar(div, duracaoMs, avancar);
   }
 
+  // ---- sons: tocam no MESMO instante que a animação (início do job da
+  // fila), nunca antes/depois — ver sound/ na raiz do projeto. Cada som é
+  // carregado uma vez (elementoSom) e clonado a cada toque (tocarSom) pra
+  // dois efeitos poderem soar em cima um do outro sem cortar o anterior.
+  const SONS = {
+    invocar: "Special Summon.wav",
+    comprar: "Draw.wav",
+    atacar: "Attack.wav",
+    dano: "Damage.wav",
+    vidaGanha: "LP increases.wav",
+    habilidade: "Card effect activates.wav",
+    dominio: "Field Spell.wav",
+    encantamento: "Card effect activates.wav",
+    setar: "Confirm.wav",
+    revelarMaldicao: "Flip.wav",
+    destruirCombate: "Monster destroyed by battle.wav",
+    destruirEfeito: "Card destroyed by effect.wav",
+    cura: "LP increases.wav",
+    efeito: "Card effect activates.wav",
+  };
+  const cacheSons = {};
+  function elementoSom(chave) {
+    const arquivo = SONS[chave];
+    if (!arquivo) return null;
+    if (!cacheSons[chave]) {
+      const audio = new Audio(`../sound/${encodeURIComponent(arquivo)}`);
+      audio.preload = "auto";
+      cacheSons[chave] = audio;
+    }
+    return cacheSons[chave];
+  }
+  function tocarSom(chave, volume = 0.55) {
+    const base = elementoSom(chave);
+    if (!base) return;
+    try {
+      const instancia = base.cloneNode();
+      instancia.volume = volume;
+      const promessa = instancia.play();
+      // autoplay bloqueado ou sem saída de áudio (ex.: navegador headless de
+      // teste) — nunca deixa isso quebrar a animação nem virar erro no console.
+      if (promessa && typeof promessa.catch === "function") promessa.catch(() => {});
+    } catch (erro) {
+      // ambiente sem suporte a Audio — silencioso, mesma ideia acima.
+    }
+  }
+
   // combatenteInvocado: voa do Panteão até o slot de Monstro — o slot já
   // existe vazio no esqueleto do tabuleiro, não precisa esperar o próximo render.
   game.bus.on("combatenteInvocado", (e) => {
-    enfileirarFx((avancar) => fxSpawnGhost(rectPilha(e.playerId, "panteao"), rectMonstro(e.playerId), e.carta.arquivo, avancar));
+    enfileirarFx((avancar) => {
+      tocarSom("invocar");
+      fxSpawnGhost(rectPilha(e.playerId, "panteao"), rectMonstro(e.playerId), e.carta.arquivo, avancar);
+    });
   });
 
   // cartaComprada: mesmo tratamento do summon (Baralho -> um retângulo do
@@ -639,9 +688,15 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // um pulso na pilha do Baralho dele.
   game.bus.on("cartaComprada", (e) => {
     if (e.playerId === jogadorLocal) {
-      enfileirarFx((avancar) => fxSpawnGhost(rectPilha(e.playerId, "baralho"), rectProximoSlotDeMao(), e.carta.arquivo, avancar));
+      enfileirarFx((avancar) => {
+        tocarSom("comprar");
+        fxSpawnGhost(rectPilha(e.playerId, "baralho"), rectProximoSlotDeMao(), e.carta.arquivo, avancar);
+      });
     } else {
-      enfileirarFx((avancar) => fxPulso(document.querySelector(`#${containerIdDe(e.playerId)} [data-pilha="baralho"] .slot`), "destaque", avancar));
+      enfileirarFx((avancar) => {
+        tocarSom("comprar");
+        fxPulso(document.querySelector(`#${containerIdDe(e.playerId)} [data-pilha="baralho"] .slot`), "destaque", avancar);
+      });
     }
   });
 
@@ -663,7 +718,16 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // só aparece no próximo render de qualquer forma).
   game.bus.on("cartaSeraDestruida", (e) => {
     const elemento = elCartaAtual.get(e.carta);
-    if (elemento) enfileirarFx((avancar) => fxSpawnAnel(elemento.getBoundingClientRect(), "dano", avancar));
+    if (elemento) {
+      const rect = elemento.getBoundingClientRect();
+      // "derrotado em combate" (ver CombatSystem/resolverAtaque) tem seu
+      // próprio som de batalha; qualquer outro motivo (efeito, substituído
+      // por novo Domínio, Maldição ativada...) usa o som de "efeito" genérico.
+      enfileirarFx((avancar) => {
+        tocarSom(e.motivo === "derrotado em combate" ? "destruirCombate" : "destruirEfeito");
+        fxSpawnAnel(rect, "dano", avancar);
+      });
+    }
   });
   game.bus.on("cartaDestruida", (e) => {
     if (e.playerId === null) return; // carta sem dono nesse contexto — nada a animar
@@ -675,7 +739,10 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   // ataqueDeclarado: uma leve vibração no atacante, a "batida" de tensão
   // antes do impacto.
   game.bus.on("ataqueDeclarado", (e) => {
-    enfileirarFx((avancar) => fxShake(elCartaAtual.get(e.atacante), avancar));
+    enfileirarFx((avancar) => {
+      tocarSom("atacar");
+      fxShake(elCartaAtual.get(e.atacante), avancar);
+    });
   });
 
   // danoCausado + vidaAlterada: o número flutuante aparece UMA vez só — se
@@ -692,12 +759,15 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
       if (elemento) {
         const rect = elemento.getBoundingClientRect();
         enfileirarFx(fxParalelo(
-          (avancar) => fxPulso(elemento, "dano", avancar, true),
+          (avancar) => { tocarSom("dano"); fxPulso(elemento, "dano", avancar, true); },
           (avancar) => fxSpawnNumero(rect, `-${e.quantidade}`, "dano", avancar, true)
         ));
       }
     } else {
-      enfileirarFx((avancar) => fxSpawnNumero(rectInfoLado(e.alvoPlayer), `-${e.quantidade}`, "dano", avancar, true));
+      enfileirarFx((avancar) => {
+        tocarSom("dano");
+        fxSpawnNumero(rectInfoLado(e.alvoPlayer), `-${e.quantidade}`, "dano", avancar, true);
+      });
     }
   });
   game.bus.on("vidaAlterada", (e) => {
@@ -706,13 +776,18 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
       return;
     }
     const perda = e.delta < 0;
-    enfileirarFx((avancar) =>
-      fxSpawnNumero(rectInfoLado(e.playerId), `${e.delta >= 0 ? "+" : ""}${e.delta}`, perda ? "dano" : "cura", avancar, perda));
+    enfileirarFx((avancar) => {
+      tocarSom(perda ? "dano" : "vidaGanha");
+      fxSpawnNumero(rectInfoLado(e.playerId), `${e.delta >= 0 ? "+" : ""}${e.delta}`, perda ? "dano" : "cura", avancar, perda);
+    });
   });
 
   // habilidadeAtivada: brilho no próprio combatente que ativou.
   game.bus.on("habilidadeAtivada", (e) => {
-    enfileirarFx((avancar) => fxPulso(elCartaAtual.get(e.carta), "destaque", avancar));
+    enfileirarFx((avancar) => {
+      tocarSom("habilidade");
+      fxPulso(elCartaAtual.get(e.carta), "destaque", avancar);
+    });
   });
 
   // dominioAtivado/encantamentoJogado/maldicaoColocada ("jogar carta de
@@ -733,11 +808,17 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   }
   game.bus.on("dominioAtivado", (e) => {
     const origem = origemNaMaoDe(e.carta, e.playerId);
-    enfileirarFx((avancar) => fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar));
+    enfileirarFx((avancar) => {
+      tocarSom("dominio");
+      fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar);
+    });
   });
   game.bus.on("encantamentoJogado", (e) => {
     const origem = origemNaMaoDe(e.carta, e.playerId);
-    enfileirarFx((avancar) => fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar));
+    enfileirarFx((avancar) => {
+      tocarSom("encantamento");
+      fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar);
+    });
   });
 
   // maldicaoColocada: NUNCA mostra a arte real de uma Maldição do OPONENTE
@@ -748,9 +829,15 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   game.bus.on("maldicaoColocada", (e) => {
     if (e.playerId === jogadorLocal) {
       const origem = origemNaMaoDe(e.carta, e.playerId);
-      enfileirarFx((avancar) => fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar));
+      enfileirarFx((avancar) => {
+        tocarSom("setar");
+        fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar);
+      });
     } else {
-      enfileirarFx((avancar) => fxPulso(document.querySelector(`#${containerIdDe(e.playerId)} .linha-magia .slot`), "destaque", avancar));
+      enfileirarFx((avancar) => {
+        tocarSom("setar");
+        fxPulso(document.querySelector(`#${containerIdDe(e.playerId)} .linha-magia .slot`), "destaque", avancar);
+      });
     }
   });
 
@@ -763,7 +850,10 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
   game.bus.on("maldicaoAtivada", (e) => {
     const elemento = elCartaAtual.get(e.carta);
     const rect = elemento ? elemento.getBoundingClientRect() : rectSlotDeMagia(e.playerId);
-    enfileirarFx((avancar) => fxSpawnFlip(rect, e.carta.arquivo, avancar));
+    enfileirarFx((avancar) => {
+      tocarSom("revelarMaldicao");
+      fxSpawnFlip(rect, e.carta.arquivo, avancar);
+    });
   });
 
   // statusAlterado (buff/debuff/cura — ver TCG.buff/TCG.curar): sinal
@@ -779,14 +869,14 @@ TCG.criarUI = function criarUI(game, jogadorLocal) {
     const rect = elemento.getBoundingClientRect();
     if (e.origem === "cura") {
       enfileirarFx(fxParalelo(
-        (avancar) => fxSpawnBloom(rect, avancar),
+        (avancar) => { tocarSom("cura"); fxSpawnBloom(rect, avancar); },
         (avancar) => fxSpawnNumero(rect, `+${e.delta}`, "cura", avancar)
       ));
       return;
     }
     const tipo = e.delta > 0 ? "cura" : "dano";
     enfileirarFx(fxParalelo(
-      (avancar) => fxPulso(elemento, tipo, avancar),
+      (avancar) => { tocarSom("efeito"); fxPulso(elemento, tipo, avancar); },
       (avancar) => fxSpawnNumero(rect, `${e.delta >= 0 ? "+" : ""}${e.delta}`, tipo, avancar)
     ));
   });
