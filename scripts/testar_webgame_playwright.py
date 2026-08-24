@@ -45,6 +45,24 @@ def fechar_modal_se_aberto(page, escolher=True):
     return True
 
 
+def esperar_fila_fx_esvaziar(page, max_ms=30000, passo_ms=200):
+    """A fila de animação (ui.js, enfileirarFx) toca UM job por vez, do
+    início ao fim de cada um, antes de começar o próximo — depois de um
+    driver de teste que avança MUITO mais rápido que a velocidade real do
+    jogo (jogar_ate_o_fim usa esperas de 10-20ms entre ações), a fila pode
+    acumular bem mais eventos do que uma sessão humana produziria, e
+    demorar mais que qualquer tempo fixo pra esvaziar de verdade — por
+    isso espera de verdade (`window.ui.filaFxVazia()`) em vez de adivinhar
+    quanto tempo basta."""
+    decorrido = 0
+    while decorrido < max_ms:
+        if page.evaluate("() => window.ui.filaFxVazia()"):
+            return True
+        page.wait_for_timeout(passo_ms)
+        decorrido += passo_ms
+    return False
+
+
 def jogar_ate_o_fim(page, max_ciclos=250):
     for _ in range(max_ciclos):
         estado = page.evaluate("() => TCG.estado(window.game)")
@@ -1129,30 +1147,96 @@ def testar_fx_statusAlterado_nao_dispara_ao_reaplicar_passivo_sem_mudanca(browse
     print("OK  statusAlterado dispara só na mudança real, não no limpa-e-reaplica de rotina do passivo")
 
 
-def testar_fx_nao_deixa_no_ao_longo_de_partida_completa(browser):
-    """Roda uma partida inteira (o mesmo driver de testar_partida_completa)
-    e confirma que #fx-layer não vazou nenhum nó ao longo do caminho —
-    a regressão clássica de uma camada de animação paralela ao render()."""
+def testar_fx_nao_deixa_no_apos_uma_rajada_de_eventos(browser):
+    """A fila de animação toca um job por vez, do início ao fim, antes do
+    próximo começar (ver enfileirarFx/processarFilaFx em ui.js) — de
+    propósito, pra NENHUM evento ser descartado ou sobreposto (mesmo numa
+    sequência corrida, ex.: um turno de IA cheio de ações). Isso tem um
+    custo: a fila drena proporcionalmente ao número de eventos, não a um
+    tempo fixo — jogar a partida de verdade (mesmo só uns poucos "ciclos"
+    do driver de teste, que já avança bem mais rápido que ritmo humano e
+    pode disparar um turno de IA inteiro por clique) gera uma rajada grande
+    demais pra esperar num teste (dezenas de segundos). Uma rajada
+    CONTROLADA (poucos eventos sintéticos, misturando os vários tipos de
+    efeito) já basta pra provar que a fila drena e não vaza nó nenhum."""
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     erros = []
     page.on("pageerror", lambda e: erros.append(str(e)))
     page.on("console", lambda m: erros.append(m.text) if m.type == "error" else None)
-    page.goto(INDEX + "?seed=2")
+    page.goto(INDEX + "?seed=42")
+    page.wait_for_timeout(200)
+    imgs = page.query_selector_all("#selecao-opcoes img")
+    imgs[0].click()
     page.wait_for_timeout(150)
 
-    estado_final = jogar_ate_o_fim(page)
-    # espera folgada: um turno de IA agitado pode escalonar vários eventos até
-    # o teto de atraso (480ms, ver proximoAtraso em ui.js) + a duração do
-    # efeito mais longo (fx-num "grande", de dano, 1100ms) + a margem de
-    # segurança do fallback de limpeza (80ms).
-    page.wait_for_timeout(2000)
+    page.evaluate("""() => {
+        const g = window.game;
+        const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
+        const alvo = acharCarta('Rei Arthur');
+        g.board[2].monstro = alvo;
+        window.ui.render();
+        // mistura os vários tipos de fx ("de camada" e "em lugar") numa rajada só
+        g.bus.emit('danoCausado', { quantidade: 3, alvo, alvoPlayer: 2 });
+        g.bus.emit('danoCausado', { quantidade: 5, alvo, alvoPlayer: 2 });
+        g.bus.emit('habilidadeAtivada', { playerId: 2, carta: alvo });
+        g.bus.emit('vidaAlterada', { playerId: 2, delta: -4, total: 16 });
+        g.bus.emit('cartaComprada', { playerId: 2, carta: acharCarta('Beowulf'), origem: 'turno' });
+    }""")
+
+    esvaziou = esperar_fila_fx_esvaziar(page, max_ms=15000)
     sobrando = page.eval_on_selector_all("#fx-layer > *", "els => els.length")
 
-    assert estado_final["fimDeJogo"], f"partida nao terminou: {estado_final}"
-    assert sobrando == 0, f"#fx-layer vazou {sobrando} nó(s) depois de uma partida inteira"
+    assert esvaziou, "a fila de animação não esvaziou dentro do tempo máximo (15s)"
+    assert sobrando == 0, f"#fx-layer vazou {sobrando} nó(s) depois da rajada"
     assert not erros, f"erros no console: {erros}"
     page.close()
-    print(f"OK  #fx-layer não vaza nós numa partida completa (seed=2, {estado_final['turno']} turnos)")
+    print("OK  #fx-layer não vaza nós depois de uma rajada de eventos (fila esvazia sozinha)")
+
+
+def testar_fx_fila_toca_eventos_em_sequencia_sem_descartar(browser):
+    """Dois golpes de dano seguidos no MESMO combatente tocam um de cada
+    vez — nunca os dois números flutuantes ao mesmo tempo — e NENHUM dos
+    dois é descartado, só porque o outro já estava animando."""
+    page = browser.new_page(viewport={"width": 1400, "height": 900})
+    erros = []
+    page.on("pageerror", lambda e: erros.append(str(e)))
+    page.on("console", lambda m: erros.append(m.text) if m.type == "error" else None)
+    page.goto(INDEX + "?seed=42")
+    page.wait_for_timeout(200)
+    imgs = page.query_selector_all("#selecao-opcoes img")
+    imgs[0].click()
+    page.wait_for_timeout(150)
+
+    page.evaluate("""() => {
+        const g = window.game;
+        const acharCarta = (nome) => TCG.criarCardInstance(CARTAS.find(c => c.nome === nome));
+        const alvo = acharCarta('Rei Arthur');
+        g.board[2].monstro = alvo;
+        window.ui.render();
+        g.bus.emit('danoCausado', { quantidade: 3, alvo, alvoPlayer: 2 });
+        g.bus.emit('danoCausado', { quantidade: 5, alvo, alvoPlayer: 2 });
+    }""")
+
+    # logo depois de disparar os DOIS eventos, só o primeiro pode estar
+    # tocando — se os dois números aparecessem juntos aqui, não seria "um
+    # de cada vez".
+    page.wait_for_timeout(80)
+    textos_cedo = page.eval_on_selector_all("#fx-layer .fx-num", "els => els.map(e => e.textContent)")
+
+    # espera a fila esvaziar de vez, acumulando todo texto visto no caminho
+    # — prova que os DOIS golpes realmente tocaram (nenhum foi descartado).
+    vistos = set(textos_cedo)
+    for _ in range(30):
+        if page.evaluate("() => window.ui.filaFxVazia()"):
+            break
+        page.wait_for_timeout(100)
+        vistos.update(page.eval_on_selector_all("#fx-layer .fx-num", "els => els.map(e => e.textContent)"))
+
+    assert len(textos_cedo) <= 1, f"os dois golpes de dano apareceram AO MESMO TEMPO: {textos_cedo}"
+    assert "-3" in vistos and "-5" in vistos, f"um dos dois golpes foi descartado, só vi: {vistos}"
+    assert not erros, f"erros no console: {erros}"
+    page.close()
+    print("OK  fila de animação toca eventos em sequência (um de cada vez) sem descartar nenhum")
 
 
 def main():
@@ -1178,7 +1262,8 @@ def main():
         testar_ia_nao_revela_propria_maldicao_no_proprio_turno(browser)
         testar_fx_summon_voa_e_limpa_sozinho(browser)
         testar_fx_statusAlterado_nao_dispara_ao_reaplicar_passivo_sem_mudanca(browser)
-        testar_fx_nao_deixa_no_ao_longo_de_partida_completa(browser)
+        testar_fx_nao_deixa_no_apos_uma_rajada_de_eventos(browser)
+        testar_fx_fila_toca_eventos_em_sequencia_sem_descartar(browser)
         testar_partida_completa(browser)
         browser.close()
     print("\nTODOS OS TESTES PASSARAM")
