@@ -192,14 +192,23 @@ reg("Joana d'Arc", (game, playerId, carta) => {
 
 reg("Gilgamesh", (game, playerId) => TCG.comprar(game, playerId, 1)); // simplificado: sem subtipo "Equipamento" nos dados
 
+// "Ataca duas vezes, mas o dano é reduzido à metade" — dispara DOIS ataques
+// DE VERDADE (passam pela fórmula normal de combate em TCG.resolverAtaque:
+// diferença de Combate, bônus elemental, Sigurd, Jardins Suspensos,
+// reflexão), cada um com o dano final dividido por 2 — não um nuke avulso
+// de "metade do Combate atual" direto no alvo, fora da fórmula (mesmo
+// raciocínio da correção de Sigurd). Conta como o ataque do turno: depois
+// de ativar, não dá pra declarar um ataque normal de novo. Não passa por
+// TCG.ofertarMaldicoesReativas (as Maldições reativas a "ataque declarado",
+// tipo Escudo de Gelo Absoluto, não são oferecidas aqui) — escopo
+// deliberadamente menor que um ataque declarado de verdade.
 reg("Aquiles", (game, playerId, carta) => {
   const oponente = TCG.oponenteDe(game, playerId);
-  const meio = Math.floor(carta.atualPow / 2);
   for (let i = 0; i < 2; i++) {
     const defensor = TCG.combatenteAtivo(game, oponente);
-    if (defensor) TCG.danoCombatente(game, defensor, meio, "Rapidez");
-    else TCG.danoJogador(game, oponente, meio, "Rapidez");
+    TCG.resolverAtaque(game, playerId, carta, oponente, defensor, 0.5);
   }
+  carta.atacouNesteTurno = true;
 });
 
 reg("Atalanta", (game, playerId) => TCG.danoJogador(game, TCG.oponenteDe(game, playerId), 5, "Flecha Veloz"));
@@ -226,6 +235,20 @@ reg("Cu Chulainn", (game, playerId, carta) => {
       TCG.destruir(game, TCG.combatenteAtivo(game, oponente), "Fúria Final");
     },
   });
+  // A vingança só protege ATÉ O FIM DO TURNO em que a Habilidade foi
+  // ativada — mesmo padrão de duração das outras Habilidades de combatente
+  // (Rei Arthur, Sigurd, Quimera: todas NESTE_TURNO). Sem isso, o gatilho
+  // ficava armado PRA SEMPRE (só sumia se Cu Chulainn morresse) — pagar o
+  // custo de Habilidade de novo em turnos seguintes nunca fazia diferença
+  // nenhuma, já que a vingança já estava permanentemente armada.
+  TCG.registrarTrigger(game, {
+    origemCarta: carta,
+    ownerPlayerId: playerId,
+    eventoTipo: "faseAlterada",
+    persistente: false,
+    condicao: (evento) => evento.faseNova === "FINAL" && evento.playerId === playerId,
+    efeito: () => TCG.removerTriggersDe(game, carta),
+  });
 });
 
 reg("Merlin", (game, playerId) => {
@@ -237,7 +260,16 @@ reg("Merlin", (game, playerId) => {
 
 reg("Cthulhu", (game, playerId) => TCG.descartarAleatorias(game, TCG.oponenteDe(game, playerId), 2));
 
-reg("Fenrir", (game, playerId) => TCG.destruir(game, TCG.dominioAtivo(game, TCG.oponenteDe(game, playerId)), "Devorar"));
+// "Destrói a carta de Domínio ativa no campo" — sem qualificar dono. Como só
+// existe 1 Domínio ativo NO JOGO INTEIRO (compartilhado, fica no slot de
+// magia de quem o jogou por último — ver TCG.dominioParaFundo), mira esse
+// Domínio único, mesmo que tenha sido o próprio controlador de Fenrir quem
+// o ativou — checar só o lado do oponente deixava a Habilidade sem alvo
+// válido nesse caso, apesar de haver um Domínio bem "ativo no campo".
+reg("Fenrir", (game) => {
+  const fundo = TCG.dominioParaFundo(game);
+  if (fundo) TCG.destruir(game, fundo.carta, "Devorar");
+});
 
 // "Causa 3 de dano POR TURNO ao alvo atingido" — não é um dano único; morde
 // logo na ativação e registra um gatilho no PRÓPRIO alvo (não em Jörmungandr)

@@ -100,14 +100,20 @@ class CombatSystem:
         self.ctrl = ctrl  # ver Jardins Suspensos (game/effects.py) -- reducao_dano_terra
 
     def resolver_ataque(self, world: World, atacante_player: int, atacante: int,
-                         defensor_player: int, defensor: int | None) -> None:
+                         defensor_player: int, defensor: int | None,
+                         multiplicador: float = 1) -> None:
+        """`multiplicador` (default 1): escala o dano final do ataque, sem
+        mexer no resto da fórmula (vantagem elemental, Sigurd, redução de
+        Jardins Suspensos, reflexão) — usado por Aquiles ("Rapidez: ataca
+        duas vezes, mas o dano é reduzido à metade"), que chama isto DUAS
+        vezes com 0.5 em vez de causar dano avulso fora da fórmula normal."""
         self.bus.publish(AttackDeclared(
             atacante_player=atacante_player, atacante_card=atacante,
             defensor_player=defensor_player, defensor_card=defensor,
         ))
 
         stats_a = world.get_component(atacante, CombatStats)
-        dano = stats_a.atual_pow
+        dano = int(stats_a.atual_pow * multiplicador)
 
         elem_a = elemento_efetivo(world, atacante)
 
@@ -155,6 +161,8 @@ class CombatSystem:
             info_d = world.get_component(defensor, CardInfo)
             if info_d and info_d.tipo is Tipo.MONSTRO:
                 dano *= 2
+
+        dano = int(dano * multiplicador)
 
         alvo_dano = defensor
         alvo_dano_player = defensor_player

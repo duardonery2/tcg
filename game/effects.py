@@ -37,14 +37,14 @@ from typing import Callable
 from .components import (
     AbilityCost, AttackedThisTurn, AttackNegated, CardInfo, CombatStats,
     DamageReflected, DanoDobradoContraMonstro, Duracao, Elemento,
-    ElementoOverride, FaceDown, IgnoraFraquezaElemental, Location, ManaCost,
-    StatusEffect, StatusEffects, Tipo, Zona,
+    ElementoOverride, Fase, FaceDown, IgnoraFraquezaElemental, Location,
+    ManaCost, StatusEffect, StatusEffects, Tipo, Zona,
 )
 from .deck import DeckEmptyError
 from .events import (
     AbilityActivated, AttackDeclared, AttackResolved, CardAboutToBeDestroyed,
     CardDestroyed, CardDiscarded, CardDrawn, CombatantSummoned, DamageDealt,
-    Event, LifeChanged, ManaChanged, TurnStarted,
+    Event, LifeChanged, ManaChanged, PhaseChanged, TurnStarted,
 )
 from .phases import _recalcular_stats
 from .systems import elemento_efetivo
@@ -223,6 +223,18 @@ def dominio_ativo(ctrl, player_id: int) -> int | None:
     return ctrl.board.lado(player_id).dominio_ativo(ctrl.world, ctrl.dominio_cards)
 
 
+def dominio_ativo_global(ctrl) -> int | None:
+    """Só pode haver 1 Domínio ativo NO JOGO INTEIRO (compartilhado — ver
+    comentário de TCG.dominioParaFundo em webgame/engine.js), não uma por
+    lado; usado por efeitos como Fenrir ("Destrói a carta de Domínio ativa
+    no campo") que miram o Domínio em si, não o de um jogador específico."""
+    for pid in ctrl.jogadores:
+        d = dominio_ativo(ctrl, pid)
+        if d is not None:
+            return d
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Registro
 # ---------------------------------------------------------------------------
@@ -340,11 +352,22 @@ def _(ctrl, player_id, card, evento=None):
 
 @EFFECTS.registrar("Aquiles")
 def _(ctrl, player_id, card, evento=None):
+    # "Ataca duas vezes, mas o dano é reduzido à metade" — dispara DOIS
+    # ataques DE VERDADE (passam pela fórmula normal de combate em
+    # CombatSystem.resolver_ataque: diferença de Combate, bônus elemental,
+    # Sigurd, Jardins Suspensos, reflexão), cada um com o dano final
+    # dividido por 2 — não um nuke avulso de "metade do Combate atual"
+    # direto no alvo, fora da fórmula (mesmo raciocínio da correção de
+    # Sigurd). Conta como o ataque do turno: depois de ativar, não dá pra
+    # declarar um ataque normal de novo. Não passa por
+    # curses.ofertar_maldicoes_reativas (Maldições reativas a "ataque
+    # declarado", tipo Escudo de Gelo Absoluto, não são oferecidas aqui) —
+    # escopo deliberadamente menor que um ataque declarado de verdade.
     oponente = _oponente(ctrl, player_id)
-    defensor = combatente_ativo(ctrl, oponente)
-    meio = ctrl.world.get_component(card, CombatStats).atual_pow // 2
-    dano_combatente(ctrl, defensor, meio, "Rapidez") if defensor else dano_jogador(ctrl, oponente, meio, "Rapidez")
-    dano_combatente(ctrl, defensor, meio, "Rapidez") if defensor else dano_jogador(ctrl, oponente, meio, "Rapidez")
+    for _ in range(2):
+        defensor = combatente_ativo(ctrl, oponente)
+        ctrl.combat_system.resolver_ataque(ctrl.world, player_id, card, oponente, defensor, multiplicador=0.5)
+    ctrl.world.add_component(card, AttackedThisTurn())
 
 
 @EFFECTS.registrar("Atalanta")
@@ -370,8 +393,22 @@ def _(ctrl, player_id, card, evento=None):
         oponente = _oponente(ctrl, player_id)
         destruir(ctrl, combatente_ativo(ctrl, oponente), "Fúria Final")
 
+    # A vingança só protege ATÉ O FIM DO TURNO em que a Habilidade foi
+    # ativada — mesmo padrão de duração das outras Habilidades de combatente
+    # (Rei Arthur, Sigurd, Quimera: todas NESTE_TURNO). Sem isso, o gatilho
+    # ficava armado PRA SEMPRE (só sumia se Cu Chulainn morresse) — pagar o
+    # custo de Habilidade de novo em turnos seguintes nunca fazia diferença
+    # nenhuma, já que a vingança já estava permanentemente armada.
+    def _condicao_expira(evento, ctrl):
+        return evento.fase_nova is Fase.FINAL and evento.player_id == player_id
+
+    def _expira(evento, ctrl):
+        remover_triggers_de(ctrl, card)
+
     remover_triggers_de(ctrl, card)  # evita empilhar de novo se a Habilidade for ativada mais de 1 vez
     registrar_trigger(ctrl, CardDestroyed, _efeito, origem_card=card, owner_player_id=player_id, condicao=_condicao)
+    registrar_trigger(ctrl, PhaseChanged, _expira, origem_card=card, owner_player_id=player_id,
+                       condicao=_condicao_expira, persistente=False)
 
 
 @EFFECTS.registrar("Merlin")
@@ -389,7 +426,13 @@ def _(ctrl, player_id, card, evento=None):
 
 @EFFECTS.registrar("Fenrir")
 def _(ctrl, player_id, card, evento=None):
-    destruir(ctrl, dominio_ativo(ctrl, _oponente(ctrl, player_id)), "Devorar")
+    # "Destrói a carta de Domínio ativa no campo" — sem qualificar dono. Como
+    # só existe 1 Domínio ativo NO JOGO INTEIRO (compartilhado, fica no slot
+    # de magia de quem o jogou por último), mira esse Domínio único, mesmo
+    # que tenha sido o próprio controlador de Fenrir quem o ativou — checar
+    # só o lado do oponente deixava a Habilidade sem alvo válido nesse caso,
+    # apesar de haver um Domínio bem "ativo no campo".
+    destruir(ctrl, dominio_ativo_global(ctrl), "Devorar")
 
 
 @EFFECTS.registrar("Jörmungandr")

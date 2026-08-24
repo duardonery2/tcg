@@ -362,9 +362,14 @@ TCG.avancarFase = function avancarFase(game) {
 
 // ---- combate -----------------------------------------------------
 
-TCG.resolverAtaque = function resolverAtaque(game, atacantePlayer, atacante, defensorPlayer, defensor) {
+// `multiplicador` (default 1): escala o dano final do ataque, sem mexer no
+// resto da fórmula (vantagem elemental, Sigurd, redução de Jardins
+// Suspensos, reflexão) — usado por Aquiles ("Rapidez: ataca duas vezes, mas
+// o dano é reduzido à metade"), que chama isto DUAS vezes com 0.5 em vez de
+// causar dano avulso fora da fórmula de combate normal.
+TCG.resolverAtaque = function resolverAtaque(game, atacantePlayer, atacante, defensorPlayer, defensor, multiplicador = 1) {
   game.bus.emit("ataqueDeclarado", { atacantePlayer, atacante, defensorPlayer, defensor });
-  let dano = atacante.atualPow;
+  let dano = Math.floor(atacante.atualPow * multiplicador);
 
   if (defensor === null) {
     const ps = game.players[defensorPlayer];
@@ -399,6 +404,8 @@ TCG.resolverAtaque = function resolverAtaque(game, atacantePlayer, atacante, def
   // (danoDobradoContraMonstro, NESTE_TURNO); o dano so dobra de verdade se
   // ele ATACAR um Monstro antes do buff expirar na Fase Final.
   if (atacante.danoDobradoContraMonstro && defensor.tipo === "Monstro") dano *= 2;
+
+  dano = Math.floor(dano * multiplicador);
 
   let alvoDano = defensor, alvoDanoPlayer = defensorPlayer;
   if (defensor.damageReflected) { alvoDano = atacante; alvoDanoPlayer = atacantePlayer; }
