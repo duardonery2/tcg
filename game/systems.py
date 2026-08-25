@@ -19,6 +19,7 @@ from .events import (
     CardDrawn, CardDestroyed, CardMoved, DamageDealt, EventBus, LifeChanged,
     ManaChanged, PhaseChanged,
 )
+from .phases import _recalcular_stats
 
 MANA_POR_TURNO = 2
 
@@ -199,7 +200,12 @@ class CombatSystem:
         res_antes = stats_alvo.atual_res
         dano_na_criatura = min(dano, res_antes)
         excedente = dano - dano_na_criatura
-        stats_alvo.atual_res = res_antes - dano_na_criatura
+        # dano_acumulado (não mutar atual_res direto): sobrevive a qualquer
+        # recálculo futuro por outro motivo (ver CombatStats, components.py —
+        # bug real que isso corrige: um buff não relacionado nessa mesma
+        # carta, depois, silenciosamente "curava" o dano de combate).
+        stats_alvo.dano_acumulado += dano_na_criatura
+        _recalcular_stats(world, alvo_dano)
         self.bus.publish(DamageDealt(alvo=alvo_dano, alvo_player=alvo_dano_player, quantidade=dano_na_criatura, origem="ataque"))
         if excedente > 0:
             ps_alvo = self.players[alvo_dano_player]

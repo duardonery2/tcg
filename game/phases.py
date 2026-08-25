@@ -141,4 +141,8 @@ def _recalcular_stats(world: World, entity: int) -> None:
     # sem teto de 20 aqui de proposito: qualquer alteracao de POW/RES vem de
     # Habilidade, Encantamento ou Maldição, e o teto "só pode ser quebrado
     # por feitiços" (GAME_DESIGN.md) — so um piso em 0.
-    stats.atual_pow, stats.atual_res = max(pow_, 0), max(res_, 0)
+    # dano_acumulado (combate/efeito, não-StatusEffect) desconta aqui — é o
+    # que garante que dano sobrevive a qualquer recálculo por outro motivo
+    # (ver comentário em CombatStats, components.py).
+    stats.atual_pow = max(pow_, 0)
+    stats.atual_res = max(res_ - stats.dano_acumulado, 0)

@@ -36,7 +36,11 @@ TCG.curar = function curar(game, carta, quantidade) {
   // mas tambem nunca REDUZ o valor atual — se um buff ja tiver deixado a
   // Resistencia acima da base, curar nao pode derrubar isso de volta.
   const antes = carta.atualRes;
-  carta.atualRes = Math.max(carta.atualRes, Math.min(carta.atualRes + quantidade, carta.resistencia));
+  const alvoRes = Math.max(carta.atualRes, Math.min(carta.atualRes + quantidade, carta.resistencia));
+  // traduz em reduzir danoAcumulado (não mutar atualRes direto) — é o que
+  // sobrevive a um recálculo futuro por outro motivo (ver TCG.recalcularStats).
+  carta.danoAcumulado = Math.max(carta.danoAcumulado - (alvoRes - antes), 0);
+  TCG.recalcularStats(carta);
   const delta = carta.atualRes - antes;
   if (delta > 0) game.bus.emit("statusAlterado", { carta, atributo: "res", delta, origem: "cura" });
 };
@@ -48,7 +52,12 @@ TCG.danoCombatente = function danoCombatente(game, carta, quantidade, origem = "
   if (game.reducaoDanoTerra && TCG.elementoEfetivo(carta) === "Terra") {
     quantidade = Math.max(quantidade - game.reducaoDanoTerra, 0);
   }
-  carta.atualRes = Math.max(carta.atualRes - quantidade, 0);
+  // danoAcumulado (não mutar atualRes direto): sobrevive a qualquer
+  // recálculo futuro por outro motivo — bug real que isso corrige: um buff
+  // não relacionado nessa mesma carta, depois, silenciosamente "curava"
+  // esse dano (ver TCG.recalcularStats).
+  carta.danoAcumulado += quantidade;
+  TCG.recalcularStats(carta);
   game.bus.emit("danoCausado", { alvo: carta, alvoPlayer: null, quantidade, origem });
   if (carta.atualRes <= 0) TCG.destroyCard(game, carta, origem || "destruido por efeito");
 };
@@ -95,6 +104,7 @@ TCG.retornarAoPanteao = function retornarAoPanteao(game, playerId, carta) {
   TCG.removerPassivosDe(game, carta);
   TCG.removerTriggersDe(game, carta);
   carta.statusEffects = [];
+  carta.danoAcumulado = 0;
   TCG.recalcularStats(carta);
   carta.attackNegated = false;
   carta.damageReflected = false;
@@ -184,10 +194,12 @@ reg("Sigurd", (game, playerId, carta) => {
 });
 
 reg("Joana d'Arc", (game, playerId, carta) => {
+  // "Cura totalmente" = TCG.curar com uma quantidade grande o bastante pra
+  // sempre bater no teto (resistencia impressa) — reaproveita a mesma
+  // proteção de TCG.curar (nunca reduz um atualRes já acima da base por
+  // causa de buff permanente) em vez de duplicar a lógica.
   const alvo = TCG.combatenteAtivo(game, playerId);
-  // mesmo cuidado de TCG.curar: nunca reduz um atualRes ja acima da base
-  // por causa de buff permanente.
-  if (alvo) alvo.atualRes = Math.max(alvo.atualRes, alvo.resistencia);
+  if (alvo) TCG.curar(game, alvo, alvo.resistencia);
 });
 
 reg("Gilgamesh", (game, playerId) => TCG.comprar(game, playerId, 1)); // simplificado: sem subtipo "Equipamento" nos dados
@@ -340,19 +352,28 @@ reg("Quimera", (game, playerId, carta) => {
 // evento certo, e também são removidos automaticamente na destruição
 // (TCG.destroyCard chama TCG.removerPassivosDe/removerTriggersDe).
 
-regPassivo("Trono de Camelot", (game, playerId) => {
-  const alvo = TCG.combatenteAtivo(game, playerId);
-  if (alvo && alvo.tipo === "Herói") TCG.buff(game, alvo, "pow", 3, "PERMANENTE", "Trono de Camelot");
+// "todos os Espíritos Heróicos" — sem qualificar dono, vale pros DOIS
+// lados (mesmo padrão de Vulcão Primordial), não só o combatente do
+// controlador do Domínio.
+regPassivo("Trono de Camelot", (game) => {
+  for (const pid of game.jogadores) {
+    const alvo = TCG.combatenteAtivo(game, pid);
+    if (alvo && alvo.tipo === "Herói") TCG.buff(game, alvo, "pow", 3, "PERMANENTE", "Trono de Camelot");
+  }
 });
 regDestroy("Trono de Camelot", (game, playerId) => TCG.comprar(game, playerId, 1));
 
 reg("Fenda de R'lyeh", (game, playerId, carta) => {
-  const aplicar = (g, pid) => {
-    const alvo = TCG.combatenteAtivo(g, pid);
-    if (alvo && alvo.tipo === "Monstro") TCG.buff(g, alvo, "res", 4, "PERMANENTE", "Fenda de R'lyeh");
+  // "Monstros Primordiais ganham +4 de Resistência" — sem qualificar dono,
+  // vale pros DOIS lados, não só o combatente do controlador do Domínio.
+  const aplicar = (g) => {
+    for (const pid of g.jogadores) {
+      const alvo = TCG.combatenteAtivo(g, pid);
+      if (alvo && alvo.tipo === "Monstro") TCG.buff(g, alvo, "res", 4, "PERMANENTE", "Fenda de R'lyeh");
+    }
   };
   TCG.registrarPassivo(game, playerId, carta, aplicar);
-  aplicar(game, playerId);
+  aplicar(game);
   // "No início do turno, ambos descartam 1 carta" — os dois jogadores, todo turno.
   TCG.registrarTrigger(game, {
     origemCarta: carta,
@@ -428,14 +449,18 @@ reg("Valhalla", (game, playerId, carta) => {
 // em Ressurreição Arcana e Chamado do Além — os únicos 2 efeitos que
 // tiram carta do descarte).
 reg("Fosso de Tártaro", (game, playerId, carta) => {
-  const aplicar = (g, pid) => {
-    const alvo = TCG.combatenteAtivo(g, pid);
-    if (alvo && alvo.tipo === "Monstro") TCG.buff(g, alvo, "pow", 3, "PERMANENTE", "Fosso de Tártaro");
+  // "Todo Monstro em campo ganha +3 de Combate" — sem qualificar dono, vale
+  // pros DOIS lados, não só o combatente do controlador do Domínio.
+  const aplicar = (g) => {
+    for (const pid of g.jogadores) {
+      const alvo = TCG.combatenteAtivo(g, pid);
+      if (alvo && alvo.tipo === "Monstro") TCG.buff(g, alvo, "pow", 3, "PERMANENTE", "Fosso de Tártaro");
+    }
     g.bloqueiaRessureicao = true;
   };
   const limpar = (g, c) => { TCG.limparStatusPorOrigem(g, c.nome); delete g.bloqueiaRessureicao; };
   TCG.registrarPassivo(game, playerId, carta, aplicar, limpar);
-  aplicar(game, playerId);
+  aplicar(game);
 });
 
 // "No início do turno, revela a carta do topo do Baralho. Se for de Água ou
@@ -501,7 +526,17 @@ reg("Tomo do Oráculo", (game, playerId) => TCG.comprar(game, playerId, 2));
 reg("Pacto de Sangue", (game, playerId) => {
   const alvo = TCG.combatenteAtivo(game, playerId);
   if (!alvo) return;
-  alvo.atualRes = Math.max(alvo.atualRes - 5, 0);
+  // danoAcumulado (não mutar atualRes direto): sobrevive a qualquer
+  // recálculo futuro por outro motivo (ver TCG.recalcularStats).
+  alvo.danoAcumulado += 5;
+  TCG.recalcularStats(alvo);
+  // Resistência chegando a 0 destrói o combatente, igual a QUALQUER outra
+  // fonte de dano (TCG.resolverAtaque, danoCombatente) — o sacrifício não é
+  // isento dessa regra só por vir de um custo pago pelo próprio dono.
+  if (alvo.atualRes <= 0) {
+    TCG.destroyCard(game, alvo, "sacrificado por Pacto de Sangue");
+    return;
+  }
   TCG.buff(game, alvo, "pow", 6, "ATE_FIM_DE_TURNO", "Pacto de Sangue");
 });
 
@@ -547,8 +582,15 @@ reg("Transmutação Elemental", (game, playerId) => {
   alvo.elementoOverride = { elemento: game.rng.choice(elementos), duracao: "ATE_PROXIMO_TURNO_PROPRIO" };
 });
 
-reg("Desintegração de Realidade", (game, playerId) => {
-  TCG.destruir(game, TCG.dominioAtivo(game, TCG.oponenteDe(game, playerId)), "Desintegração de Realidade");
+// "a carta de Domínio ativa NA MESA" — sem qualificar dono. Mesmo caso de
+// Fenrir: só existe 1 Domínio ativo NO JOGO INTEIRO (compartilhado), então
+// mira esse Domínio único, mesmo que esteja do lado do próprio ativador
+// (checar só o lado do oponente deixava a carta sem alvo válido nesse
+// caso). "...ou um Equipamento ligado a um combatente inimigo" não é
+// modelado (sem subtipo Equipamento nos dados).
+reg("Desintegração de Realidade", (game) => {
+  const fundo = TCG.dominioParaFundo(game);
+  if (fundo) TCG.destruir(game, fundo.carta, "Desintegração de Realidade");
 });
 
 reg("Vórtice Dimensional", (game, playerId) => {

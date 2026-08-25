@@ -27,6 +27,9 @@ TCG.criarCardInstance = function criarCardInstance(template) {
     damageReflected: false,
     ignoraFraquezaElemental: false,
     danoDobradoContraMonstro: false, // Sigurd (Matador de Feras), NESTE_TURNO
+    // dano de combate/efeito já sofrido, que NÃO é um statusEffect (sem
+    // duração própria) — ver comentário completo em TCG.recalcularStats.
+    danoAcumulado: 0,
     instanceId: _proximoInstanceId++,
   };
 };
@@ -51,8 +54,12 @@ TCG.recalcularStats = function recalcularStats(carta) {
   // Maldição, e "só pode ser quebrado por feitiços" (GAME_DESIGN.md) quer
   // dizer exatamente isso: nao ha teto pra valor JA alterado por efeito, so
   // um piso em 0 (nao da pra ficar negativo).
+  // danoAcumulado (combate/efeito, NÃO statusEffect) desconta aqui — é o que
+  // garante que dano sobrevive a este recálculo sendo repetido por outro
+  // motivo (ex.: um buff não relacionado nessa mesma carta) sem "curar"
+  // sozinho o dano já sofrido; ver campo no comentário de criarCardInstance.
   carta.atualPow = Math.max(pow, 0);
-  carta.atualRes = Math.max(res, 0);
+  carta.atualRes = Math.max(res - carta.danoAcumulado, 0);
 };
 
 TCG.elementoEfetivo = function elementoEfetivo(carta) {
@@ -438,7 +445,12 @@ TCG.resolverAtaque = function resolverAtaque(game, atacantePlayer, atacante, def
   const resAntes = alvoDano.atualRes;
   const danoNaCriatura = Math.min(dano, resAntes);
   const excedente = dano - danoNaCriatura;
-  alvoDano.atualRes = resAntes - danoNaCriatura;
+  // danoAcumulado (não mutar atualRes direto): sobrevive a qualquer
+  // recálculo futuro por outro motivo — bug real que isso corrige: um buff
+  // não relacionado nessa mesma carta, depois, silenciosamente "curava"
+  // esse dano de combate (ver TCG.recalcularStats).
+  alvoDano.danoAcumulado += danoNaCriatura;
+  TCG.recalcularStats(alvoDano);
   game.bus.emit("danoCausado", { alvo: alvoDano, alvoPlayer: alvoDanoPlayer, quantidade: danoNaCriatura, origem: "ataque" });
   if (excedente > 0) {
     const psAlvo = game.players[alvoDanoPlayer];

@@ -98,11 +98,22 @@ class CombatStats:
     quebrado por feitiços" quer dizer exatamente que Habilidade, Encantamento
     ou Maldição PODEM levar o valor atual acima de 20 sem restrição nenhuma;
     so ha piso em 0 (nao da pra ficar negativo), aplicado em `_recalcular_stats`
-    (game/phases.py)."""
+    (game/phases.py).
+
+    `dano_acumulado`: dano de combate/efeito já sofrido, que NÃO é um
+    StatusEffect (não tem duração/expiração própria — só sai com cura ou
+    com a carta sendo destruída/resetada). `_recalcular_stats` recomputa
+    `atual_res` do zero toda vez (base + StatusEffects) pra nunca duplicar
+    buff — mas por isso mesmo qualquer dano representado como mutação
+    direta de `atual_res` (fora desse campo) seria apagado no primeiro
+    recálculo seguinte por qualquer outro motivo (buff não relacionado,
+    passivo de Domínio reaplicando). `dano_acumulado` é o que garante que
+    o dano sobrevive: `atual_res = max(base_res + StatusEffects - dano_acumulado, 0)`."""
     base_pow: int
     base_res: int
     atual_pow: int = 0
     atual_res: int = 0
+    dano_acumulado: int = 0
 
     def __post_init__(self):
         if self.atual_pow == 0:

@@ -20,9 +20,11 @@ carta):
     lado, dado que o tabuleiro so tem 1 slot de Monstro).
   - Rebote Arcano exige rastrear "o proximo feitico inimigo" — stub
     comentado, nao modelado.
-  - Praga da Ferrugem e Gilgamesh ("Compre 1 carta de Equipamento")
-    dependem de um subtipo "Equipamento" que nao existe nos dados do CSV
-    atual — Gilgamesh compra do Baralho Arcano normal.
+  - Praga da Ferrugem, Gilgamesh ("Compre 1 carta de Equipamento") e
+    Desintegração de Realidade ("...ou um Equipamento ligado a um
+    combatente inimigo") dependem de um subtipo "Equipamento" que nao
+    existe nos dados do CSV atual — Gilgamesh compra do Baralho Arcano
+    normal; Desintegração de Realidade só destrói o Domínio.
   - Apoio Incondicional precisaria de um mecanismo de "par de alvos
     vinculados" a parte — placeholder deliberado, cai no fallback de
     `executar` (nenhum efeito registrado, no-op).
@@ -80,7 +82,11 @@ def curar(ctrl, card: int, quantidade: int) -> None:
     # Cura nao passa da Resistencia base (nao "sobre-cura" acima do impresso),
     # mas tambem nunca REDUZ o valor atual — se um buff ja tiver deixado a
     # Resistencia acima da base, curar nao pode derrubar isso de volta.
-    stats.atual_res = max(stats.atual_res, min(stats.atual_res + quantidade, stats.base_res))
+    alvo_res = max(stats.atual_res, min(stats.atual_res + quantidade, stats.base_res))
+    # traduz em reduzir dano_acumulado (nao mutar atual_res direto) — é o que
+    # sobrevive a um recálculo futuro por outro motivo (ver CombatStats).
+    stats.dano_acumulado = max(stats.dano_acumulado - (alvo_res - stats.atual_res), 0)
+    _recalcular_stats(ctrl.world, card)
 
 
 def dano_combatente(ctrl, card: int | None, quantidade: int, origem: str = "") -> None:
@@ -94,7 +100,12 @@ def dano_combatente(ctrl, card: int | None, quantidade: int, origem: str = "") -
     reducao_terra = getattr(ctrl, "reducao_dano_terra", None)
     if reducao_terra and elemento_efetivo(ctrl.world, card) is Elemento.TERRA:
         quantidade = max(quantidade - reducao_terra, 0)
-    stats.atual_res = max(stats.atual_res - quantidade, 0)
+    # dano_acumulado (não mutar atual_res direto): sobrevive a qualquer
+    # recálculo futuro por outro motivo — bug real que isso corrige: um buff
+    # não relacionado nessa mesma carta, depois, silenciosamente "curava"
+    # esse dano (ver CombatStats, components.py).
+    stats.dano_acumulado += quantidade
+    _recalcular_stats(ctrl.world, card)
     ctrl.bus.publish(DamageDealt(alvo=card, alvo_player=None, quantidade=quantidade, origem=origem))
     if stats.atual_res <= 0:
         ctrl.destruction_system.destruir(ctrl.world, card, motivo=origem or "destruido por efeito")
@@ -180,13 +191,13 @@ def retornar_ao_panteao(ctrl, player_id: int, card: int | None) -> None:
     from .triggers import remover_passivos_de, remover_triggers_de
     remover_passivos_de(ctrl, card)
     remover_triggers_de(ctrl, card)
-    stats = ctrl.world.get_component(card, CombatStats)
-    if stats is not None:
-        stats.atual_pow = stats.base_pow
-        stats.atual_res = stats.base_res
     statuses = ctrl.world.get_component(card, StatusEffects)
     if statuses is not None:
         statuses.itens = []
+    stats = ctrl.world.get_component(card, CombatStats)
+    if stats is not None:
+        stats.dano_acumulado = 0
+        _recalcular_stats(ctrl.world, card)
     for comp_type in (AttackNegated, DamageReflected, IgnoraFraquezaElemental,
                        DanoDobradoContraMonstro, AttackedThisTurn):
         if ctrl.world.has_component(card, comp_type):
@@ -339,10 +350,12 @@ def _(ctrl, player_id, card, evento=None):
 def _(ctrl, player_id, card, evento=None):
     alvo = combatente_ativo(ctrl, player_id)
     if alvo is not None:
+        # "Cura totalmente" = curar() com uma quantidade grande o bastante
+        # pra sempre bater no teto (base_res) — reaproveita a mesma proteção
+        # de curar() (nunca reduz um atual_res já acima da base por causa de
+        # buff permanente) em vez de duplicar a lógica.
         stats = ctrl.world.get_component(alvo, CombatStats)
-        # mesmo cuidado de `curar`: nunca reduz um atual_res ja acima da base
-        # por causa de buff permanente.
-        stats.atual_res = max(stats.atual_res, stats.base_res)
+        curar(ctrl, alvo, stats.base_res)
 
 
 @EFFECTS.registrar("Gilgamesh")
@@ -529,10 +542,14 @@ def _(ctrl, player_id, card, evento=None):
 
 @EFFECTS.registrar_passivo("Trono de Camelot")
 def _(ctrl, player_id, card, evento=None):
-    alvo = combatente_ativo(ctrl, player_id)
-    info = ctrl.world.get_component(alvo, CardInfo) if alvo else None
-    if info and info.tipo is Tipo.HEROI:
-        buff(ctrl, alvo, "pow", 3, Duracao.PERMANENTE, "Trono de Camelot")
+    # "todos os Espíritos Heróicos" — sem qualificar dono, vale pros DOIS
+    # lados (mesmo padrão de Vulcão Primordial), não só o combatente do
+    # controlador do Domínio.
+    for pid in ctrl.jogadores:
+        alvo = combatente_ativo(ctrl, pid)
+        info = ctrl.world.get_component(alvo, CardInfo) if alvo else None
+        if info and info.tipo is Tipo.HEROI:
+            buff(ctrl, alvo, "pow", 3, Duracao.PERMANENTE, "Trono de Camelot")
 
 
 @EFFECTS.ao_destruir("Trono de Camelot")
@@ -544,11 +561,15 @@ def _(ctrl, player_id, card, evento=None):
 def _(ctrl, player_id, card, evento=None):
     from .triggers import registrar_passivo, registrar_trigger
 
+    # "Monstros Primordiais ganham +4 de Resistência" — sem qualificar dono,
+    # vale pros DOIS lados (mesmo padrão de Vulcão Primordial), não só o
+    # combatente do controlador do Domínio.
     def _aplicar(ctrl, player_id, card):
-        alvo = combatente_ativo(ctrl, player_id)
-        info = ctrl.world.get_component(alvo, CardInfo) if alvo else None
-        if info and info.tipo is Tipo.MONSTRO:
-            buff(ctrl, alvo, "res", 4, Duracao.PERMANENTE, "Fenda de R'lyeh")
+        for pid in ctrl.jogadores:
+            alvo = combatente_ativo(ctrl, pid)
+            info = ctrl.world.get_component(alvo, CardInfo) if alvo else None
+            if info and info.tipo is Tipo.MONSTRO:
+                buff(ctrl, alvo, "res", 4, Duracao.PERMANENTE, "Fenda de R'lyeh")
 
     registrar_passivo(ctrl, player_id, card, _aplicar)
     _aplicar(ctrl, player_id, card)
@@ -663,11 +684,15 @@ def _(ctrl, player_id, card, evento=None):
 def _(ctrl, player_id, card, evento=None):
     from .triggers import registrar_passivo
 
+    # "Todo Monstro em campo ganha +3 de Combate" — sem qualificar dono, vale
+    # pros DOIS lados (mesmo padrão de Vulcão Primordial), não só o
+    # combatente do controlador do Domínio.
     def _aplicar(ctrl, player_id, card):
-        alvo = combatente_ativo(ctrl, player_id)
-        info = ctrl.world.get_component(alvo, CardInfo) if alvo else None
-        if info and info.tipo is Tipo.MONSTRO:
-            buff(ctrl, alvo, "pow", 3, Duracao.PERMANENTE, "Fosso de Tártaro")
+        for pid in ctrl.jogadores:
+            alvo = combatente_ativo(ctrl, pid)
+            info = ctrl.world.get_component(alvo, CardInfo) if alvo else None
+            if info and info.tipo is Tipo.MONSTRO:
+                buff(ctrl, alvo, "pow", 3, Duracao.PERMANENTE, "Fosso de Tártaro")
         ctrl.bloqueia_ressureicao = True
 
     def _limpar(ctrl, card):
@@ -766,7 +791,16 @@ def _(ctrl, player_id, card, evento=None):
     if alvo is None:
         return
     stats = ctrl.world.get_component(alvo, CombatStats)
-    stats.atual_res = max(stats.atual_res - 5, 0)
+    # dano_acumulado (não mutar atual_res direto): sobrevive a qualquer
+    # recálculo futuro por outro motivo (ver CombatStats, components.py).
+    stats.dano_acumulado += 5
+    _recalcular_stats(ctrl.world, alvo)
+    # Resistência chegando a 0 destrói o combatente, igual a QUALQUER outra
+    # fonte de dano (CombatSystem, dano_combatente) — o sacrifício não é
+    # isento dessa regra só por vir de um custo pago pelo próprio dono.
+    if stats.atual_res <= 0:
+        destruir(ctrl, alvo, "sacrificado por Pacto de Sangue")
+        return
     buff(ctrl, alvo, "pow", 6, Duracao.ATE_FIM_DE_TURNO, "Pacto de Sangue")
 
 
@@ -828,7 +862,13 @@ def _(ctrl, player_id, card, evento=None):
 
 @EFFECTS.registrar("Desintegração de Realidade")
 def _(ctrl, player_id, card, evento=None):
-    destruir(ctrl, dominio_ativo(ctrl, _oponente(ctrl, player_id)), "Desintegração de Realidade")
+    # "a carta de Domínio ativa NA MESA" — sem qualificar dono. Mesmo caso de
+    # Fenrir: só existe 1 Domínio ativo NO JOGO INTEIRO (compartilhado), então
+    # mira esse Domínio único, mesmo que esteja do lado do próprio ativador
+    # (checar só o lado do oponente deixava a carta sem alvo válido nesse
+    # caso). "...ou um Equipamento ligado a um combatente inimigo" não é
+    # modelado (sem subtipo Equipamento nos dados, ver topo do arquivo).
+    destruir(ctrl, dominio_ativo_global(ctrl), "Desintegração de Realidade")
 
 
 @EFFECTS.registrar("Vórtice Dimensional")
