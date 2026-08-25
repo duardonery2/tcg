@@ -39,7 +39,8 @@ from typing import Callable
 from .components import (
     AbilityCost, AttackedThisTurn, AttackNegated, CardInfo, CombatStats,
     DamageReflected, DanoDobradoContraMonstro, Duracao, Elemento,
-    ElementoOverride, Fase, FaceDown, IgnoraFraquezaElemental, Location,
+    ElementoOverride, Fase, FaceDown, IgnoraFraquezaElemental,
+    ImuneAHabilidadesInimigas, Location,
     ManaCost, StatusEffect, StatusEffects, Tipo, Zona,
 )
 from .deck import DeckEmptyError
@@ -199,7 +200,7 @@ def retornar_ao_panteao(ctrl, player_id: int, card: int | None) -> None:
         stats.dano_acumulado = 0
         _recalcular_stats(ctrl.world, card)
     for comp_type in (AttackNegated, DamageReflected, IgnoraFraquezaElemental,
-                       DanoDobradoContraMonstro, AttackedThisTurn):
+                       DanoDobradoContraMonstro, AttackedThisTurn, ImuneAHabilidadesInimigas):
         if ctrl.world.has_component(card, comp_type):
             ctrl.world.remove_component(card, comp_type)
     ability = ctrl.world.get_component(card, AbilityCost)
@@ -519,6 +520,8 @@ def _(ctrl, player_id, card, evento=None):
 @EFFECTS.registrar("Minotauro")
 def _(ctrl, player_id, card, evento=None):
     alvo = combatente_ativo(ctrl, _oponente(ctrl, player_id))
+    if alvo is not None and ctrl.world.has_component(alvo, ImuneAHabilidadesInimigas):
+        return  # Manto da Natureza
     ability = ctrl.world.get_component(alvo, AbilityCost) if alvo else None
     if ability:
         ability.usada_neste_turno = True  # simplificado: bloqueia so o turno corrente
@@ -854,10 +857,27 @@ def _(ctrl, player_id, card, evento=None):
 
 @EFFECTS.registrar("Transmutação Elemental")
 def _(ctrl, player_id, card, evento=None):
+    # "Mude... para QUALQUER OUTRA" — decisão real do jogador (mirar a
+    # vantagem elemental certa), não sorteio; exclui o elemento atual (não
+    # seria "outra"). `opcoes` aqui são valores Elemento, não entidades — o
+    # SelectionManager é genérico o bastante pra aceitar qualquer coisa
+    # comparável (só a GUI Pygame, que assume carta em toda seleção, não
+    # sabe desenhar essa — não é usada por nenhum script/teste desta versão).
     alvo = combatente_ativo(ctrl, player_id)
-    if alvo is not None:
-        novo = ctrl.rng.choice([e for e in Elemento if e is not Elemento.NENHUM])
-        ctrl.world.add_component(alvo, ElementoOverride(elemento=novo, duracao=Duracao.ATE_PROXIMO_TURNO_PROPRIO))
+    if alvo is None:
+        return
+    atual = elemento_efetivo(ctrl.world, alvo)
+    opcoes = [e for e in Elemento if e is not Elemento.NENHUM and e is not atual]
+
+    def _ao_escolher(escolha: list) -> None:
+        ctrl.world.add_component(alvo, ElementoOverride(elemento=escolha[0], duracao=Duracao.ATE_PROXIMO_TURNO_PROPRIO))
+
+    ctrl.solicitar_selecao(
+        player_id=player_id,
+        prompt="Transmutação Elemental: escolha o novo elemento do seu combatente ativo",
+        opcoes=opcoes,
+        on_resolved=_ao_escolher,
+    )
 
 
 @EFFECTS.registrar("Desintegração de Realidade")
@@ -914,18 +934,64 @@ def _(ctrl, player_id, card, evento=None):
     if alvo is None:
         return
     buff(ctrl, alvo, "pow", 8, Duracao.NESTE_TURNO, "Fúria Titânica")
-    buff(ctrl, alvo, "res", -4, Duracao.PERMANENTE, "Fúria Titânica")
+    # "Fim do turno sofre debuff permanente de -4 de Resistência" — o texto
+    # separa os dois momentos ("neste turno" vs. "fim do turno"): o debuff só
+    # bate na Fase Final DAQUELE turno, não na hora de jogar a carta (o
+    # combatente aproveita o ataque forte sem pagar o preço imediatamente).
+    # Gatilho amarrado ao próprio alvo: se ele morrer/sair de campo antes da
+    # Fase Final, o gatilho é removido junto (remover_triggers_de), sem
+    # debuff pendurado num combatente que já não existe mais.
+    from .triggers import registrar_trigger
+
+    def _condicao_aplica(evento, ctrl):
+        return evento.fase_nova is Fase.FINAL and evento.player_id == player_id
+
+    def _aplicar_debuff(evento, ctrl):
+        buff(ctrl, alvo, "res", -4, Duracao.PERMANENTE, "Fúria Titânica")
+
+    registrar_trigger(ctrl, PhaseChanged, _aplicar_debuff, origem_card=alvo, owner_player_id=player_id,
+                       condicao=_condicao_aplica, persistente=False)
 
 
 @EFFECTS.registrar("Troca Equivalente")
 def _(ctrl, player_id, card, evento=None):
+    # "Embaralhe ATÉ 3 cartas da mão" — escolha real do jogador (mulligan
+    # seletivo, pra se livrar de cartas específicas), não sorteio; até 3
+    # escolhas de 1 em 1 (mesmo padrão de Purificação Arcana), com opção de
+    # parar antes via "Pular" (minimo=0).
     from .actions import ShuffleAction
     ps = ctrl.players[player_id]
-    devolver = ctrl.rng.sample(ps.mao, k=min(3, len(ps.mao)))
-    for c in devolver:
-        ps.mao.remove(c)
-    ShuffleAction(deck=ctrl.baralhos[player_id], devolver=devolver).executar(ctrl)
-    comprar(ctrl, player_id, len(devolver))
+    escolhidas: list[int] = []
+
+    def _finalizar() -> None:
+        if not escolhidas:
+            return
+        ShuffleAction(deck=ctrl.baralhos[player_id], devolver=list(escolhidas)).executar(ctrl)
+        comprar(ctrl, player_id, len(escolhidas))
+
+    def _pedir_uma(restantes: int) -> None:
+        if restantes <= 0 or not ps.mao:
+            _finalizar()
+            return
+
+        def _ao_escolher(escolha: list[int]) -> None:
+            if not escolha:
+                _finalizar()
+                return
+            escolhida = escolha[0]
+            ps.mao.remove(escolhida)
+            escolhidas.append(escolhida)
+            _pedir_uma(restantes - 1)
+
+        ctrl.solicitar_selecao(
+            player_id=player_id,
+            prompt=f"Troca Equivalente: escolha uma carta da mão pra embaralhar de volta (restam até {restantes}, ou pule)",
+            opcoes=list(ps.mao),
+            on_resolved=_ao_escolher,
+            minimo=0, maximo=1,
+        )
+
+    _pedir_uma(3)
 
 
 @EFFECTS.registrar("Exílio Dimensional")
@@ -997,6 +1063,9 @@ def _(ctrl, player_id, card, evento=None):
     alvo = combatente_ativo(ctrl, player_id)
     if alvo is not None:
         buff(ctrl, alvo, "res", 5, Duracao.PERMANENTE, "Manto da Natureza")
+        # "imunidade a Habilidades de Mana inimigas" — checado por Minotauro
+        # (Labirinto), Amnésia Mágica e Roubo de Essência antes de agir.
+        ctrl.world.add_component(alvo, ImuneAHabilidadesInimigas())
 
 
 # ---- Maldições -----------------------------------------------------------
@@ -1066,6 +1135,8 @@ def _(ctrl, player_id, card, evento=None):
     oponente = _oponente(ctrl, player_id)
     if protegido_contra_maldicao(ctrl, oponente):
         return
+    if evento and evento.card and ctrl.world.has_component(evento.card, ImuneAHabilidadesInimigas):
+        return  # Manto da Natureza
     # simplificado (como já era): não cancela de fato o efeito da Habilidade
     # ativada (não há uma noção separada de "Habilidade de Mana" nos dados),
     # só rouba a Mana que ela custou.
@@ -1222,6 +1293,8 @@ def _(ctrl, player_id, card, evento=None):
     # habilidades" — simplificado (como já era) pra "essa ativação já era" +
     # bloqueia o resto do turno.
     alvo = (evento.card if evento else None) or combatente_ativo(ctrl, oponente)
+    if alvo is not None and ctrl.world.has_component(alvo, ImuneAHabilidadesInimigas):
+        return  # Manto da Natureza
     ability = ctrl.world.get_component(alvo, AbilityCost) if alvo else None
     if ability:
         ability.usada_neste_turno = True

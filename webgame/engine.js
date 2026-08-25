@@ -27,6 +27,7 @@ TCG.criarCardInstance = function criarCardInstance(template) {
     damageReflected: false,
     ignoraFraquezaElemental: false,
     danoDobradoContraMonstro: false, // Sigurd (Matador de Feras), NESTE_TURNO
+    imuneAHabilidadesInimigas: false, // Manto da Natureza, PERMANENTE
     // dano de combate/efeito já sofrido, que NÃO é um statusEffect (sem
     // duração própria) — ver comentário completo em TCG.recalcularStats.
     danoAcumulado: 0,

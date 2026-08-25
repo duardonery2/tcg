@@ -207,6 +207,14 @@ class NextCurseNullified:
 
 
 @dataclass
+class ImuneAHabilidadesInimigas:
+    """Enquanto presente, este combatente ignora efeitos INIMIGOS que
+    bloqueiam/cancelam sua Habilidade de Mana — Minotauro (Labirinto),
+    Amnésia Mágica, Roubo de Essência (Manto da Natureza)."""
+    pass
+
+
+@dataclass
 class IgnoraFraquezaElemental:
     """Enquanto presente, esta carta nao sofre o bonus de dano de vantagem
     elemental contra ela (Shoggoth)."""

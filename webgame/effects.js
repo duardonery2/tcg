@@ -110,6 +110,7 @@ TCG.retornarAoPanteao = function retornarAoPanteao(game, playerId, carta) {
   carta.damageReflected = false;
   carta.ignoraFraquezaElemental = false;
   carta.danoDobradoContraMonstro = false;
+  carta.imuneAHabilidadesInimigas = false;
   carta.habilidadeUsadaNesteTurno = false;
   carta.atacouNesteTurno = false;
   TCG.Deck.devolver(game.panteoes[playerId], carta);
@@ -335,6 +336,7 @@ reg("Nyarlathotep", (game, playerId) => {
 
 reg("Minotauro", (game, playerId) => {
   const alvo = TCG.combatenteAtivo(game, TCG.oponenteDe(game, playerId));
+  if (alvo && alvo.imuneAHabilidadesInimigas) return; // Manto da Natureza
   if (alvo) alvo.habilidadeUsadaNesteTurno = true; // simplificado: bloqueia so o turno corrente
 });
 
@@ -575,11 +577,24 @@ reg("Ressurreição Arcana", (game, playerId) => {
   );
 });
 
+// "Mude... para QUALQUER OUTRA" — decisão real do jogador (mirar a
+// vantagem elemental certa), não sorteio; exclui o elemento atual (não
+// seria "outra"). Sem carta pra mostrar nesta escolha — usa a variante de
+// "rótulo" de renderOverlaySelecao (ver ui.js).
 reg("Transmutação Elemental", (game, playerId) => {
   const alvo = TCG.combatenteAtivo(game, playerId);
   if (!alvo) return;
-  const elementos = ["Fogo", "Água", "Terra", "Vento"];
-  alvo.elementoOverride = { elemento: game.rng.choice(elementos), duracao: "ATE_PROXIMO_TURNO_PROPRIO" };
+  const atual = TCG.elementoEfetivo(alvo);
+  const opcoes = ["Fogo", "Água", "Terra", "Vento"]
+    .filter((e) => e !== atual)
+    .map((e) => ({ rotulo: e, elemento: e }));
+  game.selection.solicitar(
+    playerId, "Transmutação Elemental: escolha o novo elemento do seu combatente ativo",
+    opcoes,
+    (escolha) => {
+      alvo.elementoOverride = { elemento: escolha[0].elemento, duracao: "ATE_PROXIMO_TURNO_PROPRIO" };
+    }
+  );
 });
 
 // "a carta de Domínio ativa NA MESA" — sem qualificar dono. Mesmo caso de
@@ -622,22 +637,61 @@ reg("Bênção de Yggdrasil", (game, playerId) => {
   if (game.players[playerId].mao.length <= 1) TCG.comprar(game, playerId, 1);
 });
 
+// "Fim do turno sofre debuff permanente de -4 de Resistência" — o texto
+// separa os dois momentos ("neste turno" vs. "fim do turno"): o debuff só
+// bate na Fase Final DAQUELE turno, não na hora de jogar a carta (o
+// combatente aproveita o ataque forte sem pagar o preço imediatamente).
+// Gatilho amarrado ao próprio alvo: se ele morrer/sair de campo antes da
+// Fase Final, o gatilho é removido junto (removerTriggersDe), sem debuff
+// pendurado num combatente que já não existe mais.
 reg("Fúria Titânica", (game, playerId) => {
   const alvo = TCG.combatenteAtivo(game, playerId);
   if (!alvo) return;
   TCG.buff(game, alvo, "pow", 8, "NESTE_TURNO", "Fúria Titânica");
-  TCG.buff(game, alvo, "res", -4, "PERMANENTE", "Fúria Titânica");
+  TCG.registrarTrigger(game, {
+    origemCarta: alvo,
+    ownerPlayerId: playerId,
+    eventoTipo: "faseAlterada",
+    persistente: false,
+    condicao: (evento) => evento.faseNova === "FINAL" && evento.playerId === playerId,
+    efeito: () => TCG.buff(game, alvo, "res", -4, "PERMANENTE", "Fúria Titânica"),
+  });
 });
 
+// "Embaralhe ATÉ 3 cartas da mão" — escolha real do jogador (mulligan
+// seletivo, pra se livrar de cartas específicas), não sorteio; até 3
+// escolhas de 1 em 1 (mesmo padrão de Purificação Arcana), com opção de
+// parar antes via "Pular" (minimo=0).
 reg("Troca Equivalente", (game, playerId) => {
   const ps = game.players[playerId];
-  const devolver = game.rng.sample(ps.mao, Math.min(3, ps.mao.length));
-  for (const c of devolver) ps.mao.splice(ps.mao.indexOf(c), 1);
-  const baralho = game.baralhos[playerId];
-  for (const c of devolver) TCG.Deck.adicionar(baralho, c);
-  TCG.Deck.embaralhar(baralho, game.rng);
-  game.bus.emit("deckEmbaralhado", { deckNome: baralho.nome });
-  TCG.comprar(game, playerId, devolver.length);
+  const escolhidas = [];
+
+  function finalizar() {
+    if (!escolhidas.length) return;
+    const baralho = game.baralhos[playerId];
+    for (const c of escolhidas) TCG.Deck.adicionar(baralho, c);
+    TCG.Deck.embaralhar(baralho, game.rng);
+    game.bus.emit("deckEmbaralhado", { deckNome: baralho.nome });
+    TCG.comprar(game, playerId, escolhidas.length);
+  }
+
+  function pedirUma(restantes) {
+    if (restantes <= 0 || !ps.mao.length) { finalizar(); return; }
+    game.selection.solicitar(
+      playerId, `Troca Equivalente: escolha uma carta da mão pra embaralhar de volta (restam até ${restantes}, ou pule)`,
+      ps.mao.slice(),
+      (escolha) => {
+        if (!escolha.length) { finalizar(); return; }
+        const escolhida = escolha[0];
+        ps.mao.splice(ps.mao.indexOf(escolhida), 1);
+        escolhidas.push(escolhida);
+        pedirUma(restantes - 1);
+      },
+      0, 1
+    );
+  }
+
+  pedirUma(3);
 });
 
 reg("Exílio Dimensional", (game, playerId) => {
@@ -689,7 +743,11 @@ reg("Purificação Arcana", (game, playerId) => {
 
 reg("Manto da Natureza", (game, playerId) => {
   const alvo = TCG.combatenteAtivo(game, playerId);
-  if (alvo) TCG.buff(game, alvo, "res", 5, "PERMANENTE", "Manto da Natureza");
+  if (!alvo) return;
+  TCG.buff(game, alvo, "res", 5, "PERMANENTE", "Manto da Natureza");
+  // "imunidade a Habilidades de Mana inimigas" — checado por Minotauro,
+  // Amnésia Mágica e Roubo de Essência antes de agir.
+  alvo.imuneAHabilidadesInimigas = true;
 });
 
 // ---- Maldições -----------------------------------------------------------
@@ -739,6 +797,7 @@ regGatilhoMaldicao("Areias Movediças", "combatenteInvocado", (evento, game, don
 reg("Roubo de Essência", (game, playerId, carta, evento) => {
   const oponente = TCG.oponenteDe(game, playerId);
   if (TCG.protegidoContraMaldicao(game, oponente)) return;
+  if (evento && evento.carta && evento.carta.imuneAHabilidadesInimigas) return; // Manto da Natureza
   // simplificado (como já era): não cancela de fato o efeito da Habilidade
   // ativada (não há uma noção separada de "Habilidade de Mana" nos dados),
   // só rouba a Mana que ela custou.
@@ -840,6 +899,7 @@ reg("Amnésia Mágica", (game, playerId, carta, evento) => {
   // habilidades" — simplificado (como já era) pra "essa ativação já era" +
   // bloqueia o resto do turno.
   const alvo = (evento && evento.carta) || TCG.combatenteAtivo(game, oponente);
+  if (alvo && alvo.imuneAHabilidadesInimigas) return; // Manto da Natureza
   if (alvo) alvo.habilidadeUsadaNesteTurno = true;
 });
 regGatilhoMaldicao("Amnésia Mágica", "habilidadeAtivada", (evento, game, donoId) => evento.playerId !== donoId);

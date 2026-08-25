@@ -401,17 +401,31 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
     el("selecao-prompt").textContent = evento.prompt;
     const opcoesEl = el("selecao-opcoes");
     opcoesEl.innerHTML = "";
-    for (const carta of evento.opcoes) {
-      const img = document.createElement("img");
-      img.src = carta.arquivo;
-      img.alt = carta.nome;
-      comHoverPreview(img, carta);
-      img.addEventListener("click", () => {
+    for (const opcao of evento.opcoes) {
+      // A maioria das seleções escolhe entre CARTAS (arte + hover preview);
+      // algumas (ex.: Transmutação Elemental, escolher o novo elemento) não
+      // têm carta nenhuma pra mostrar — usam um objeto simples
+      // `{ rotulo, ... }` em vez de arquivo/nome, renderizado como botão.
+      const elemento = opcao && opcao.arquivo
+        ? (() => {
+            const img = document.createElement("img");
+            img.src = opcao.arquivo;
+            img.alt = opcao.nome;
+            comHoverPreview(img, opcao);
+            return img;
+          })()
+        : (() => {
+            const btn = document.createElement("button");
+            btn.className = "acao";
+            btn.textContent = opcao && opcao.rotulo != null ? opcao.rotulo : String(opcao);
+            return btn;
+          })();
+      elemento.addEventListener("click", () => {
         overlaySelecao.classList.remove("ativo");
         avancar();
-        tentar(() => resolverSelecao(evento.requestId, [carta]));
+        tentar(() => resolverSelecao(evento.requestId, [opcao]));
       });
-      opcoesEl.appendChild(img);
+      opcoesEl.appendChild(elemento);
     }
 
     const btnPularExistente = el("selecao-pular");
