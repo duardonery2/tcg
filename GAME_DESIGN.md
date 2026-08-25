@@ -51,9 +51,9 @@ Os atributos base dos Heróis e Monstros possuem um limite natural de 20 pontos,
 * **Vento** possui vantagem sobre a **Terra**.
 * **Terra** possui vantagem sobre a **Água**.
 
-**Cálculo do dano:** quando um combatente ataca outro, o dano é a **diferença** entre o Combate do atacante e o Combate do defensor (nunca negativo — combatentes parelhos ou com o defensor mais forte não causam dano nenhum um no outro). Se o atacante tiver vantagem elemental sobre o defensor, esse dano é multiplicado por 1,5. O resultado é descontado da Resistência do alvo; quando a Resistência chega a 0, o combatente é destruído. Quando não há combatente para bloquear, o dano vai direto para os Pontos de Vida do feiticeiro adversário (ver seção abaixo).
+**Cálculo do dano:** quando um combatente ataca outro, o dano é a **diferença** entre o Combate dos dois — e essa diferença acerta **quem tiver o Combate menor**, não sempre o defensor: atacar um combatente mais forte machuca o próprio atacante (combatentes parelhos não se machucam, diferença 0). Se o atacante tiver vantagem elemental sobre o defensor, esse dano é multiplicado por 1,5, não importa quem acabe levando o golpe. O resultado é descontado da Resistência de quem foi atingido; se ultrapassar a Resistência (chegando a 0, destruindo o combatente), o **excedente é descontado dos Pontos de Vida do feiticeiro dono dele**. Quando não há combatente para bloquear, o dano vai direto para os Pontos de Vida do feiticeiro adversário (ver seção abaixo).
 
-**Recompensa por destruir:** o feiticeiro que destrói o combatente do adversário em combate ganha **+1 de Mana** na reserva — vale tanto para o atacante de costume quanto para o defensor, nos casos em que o dano volta para o próprio atacante por reflexão (Espelho das Ilusões, Retribuição Kármica).
+**Recompensa por destruir:** o feiticeiro que **causou** o dano ganha **+1 de Mana** na reserva quando um combatente é destruído em combate — vale para o atacante de costume, para o defensor nos casos em que o dano volta pro próprio atacante por reflexão (Espelho das Ilusões, Retribuição Kármica), e também para o defensor quando o próprio atacante morre por atacar algo mais forte (contra-ataque, ver "Cálculo do dano" acima).
 
 ---
 

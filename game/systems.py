@@ -144,12 +144,18 @@ class CombatSystem:
             _emitir_resolvido()
             return  # ataque completamente anulado, sem dano nenhum
 
-        # Combatente contra combatente: o dano e a DIFERENCA de Combate entre
-        # os dois, nao o Combate cheio do atacante — dois combatentes parelhos
-        # se arranham pouco, uma diferenca grande de poder e que dana de verdade.
+        # A diferenca de Combate entre os dois combatentes acerta quem tiver
+        # o POW MENOR — nao sempre o defensor: atacar um combatente mais
+        # forte agora machuca o proprio ATACANTE (contra-ataque). Combatentes
+        # parelhos nao se machucam (diferenca 0).
         stats_d = world.get_component(defensor, CombatStats)
-        dano = max(stats_a.atual_pow - stats_d.atual_pow, 0)
+        dano = abs(stats_a.atual_pow - stats_d.atual_pow)
 
+        # Vantagem elemental/Sigurd continuam bonificando o dano com base no
+        # ATACANTE (elemento dele vs. o do defensor; "Dano em dobro contra
+        # Monstros" checando o TIPO do defensor) exatamente como antes —
+        # mesmo que esse dano acabe voltando pro proprio atacante no cenario
+        # de contra-ataque acima.
         elem_d = elemento_efetivo(world, defensor)
         if VANTAGEM_ELEMENTAL.get(elem_a) == elem_d and not world.has_component(defensor, IgnoraFraquezaElemental):
             dano = int(dano * 1.5)  # vantagem elemental: dano ampliado
@@ -164,27 +170,51 @@ class CombatSystem:
 
         dano = int(dano * multiplicador)
 
-        alvo_dano = defensor
-        alvo_dano_player = defensor_player
-        if world.has_component(defensor, DamageReflected):
+        # Quem leva o dano: quem tiver o POW ATUAL menor (empate cai pro
+        # atacante, mas dano ja e 0 nesse caso — tanto faz).
+        if stats_a.atual_pow <= stats_d.atual_pow:
             alvo_dano, alvo_dano_player = atacante, atacante_player
+        else:
+            alvo_dano, alvo_dano_player = defensor, defensor_player
+
+        # Reflexao: se quem IA levar o dano tem o escudo, ele volta pro
+        # OUTRO participante do combate (Espelho das Ilusões, Retribuição
+        # Kármica).
+        if world.has_component(alvo_dano, DamageReflected):
+            if alvo_dano == atacante:
+                alvo_dano, alvo_dano_player = defensor, defensor_player
+            else:
+                alvo_dano, alvo_dano_player = atacante, atacante_player
 
         # Jardins Suspensos: "todo dano recebido por combatentes de Terra é
-        # reduzido em 3" (passivo) — vale pra dano de combate tambem, nao so
-        # de efeito (ver dano_combatente em effects.py).
+        # reduzido em 3" (passivo) — vale pra quem quer que esteja levando o
+        # dano agora, nao so o defensor de costume.
         reducao_terra = getattr(self.ctrl, "reducao_dano_terra", None) if self.ctrl is not None else None
         if reducao_terra and elemento_efetivo(world, alvo_dano) is Elemento.TERRA:
             dano = max(dano - reducao_terra, 0)
 
+        # O dano que passar da Resistencia da criatura vaza pra vida do
+        # PROPRIO dono dela — antes esse excedente era simplesmente descartado.
         stats_alvo = world.get_component(alvo_dano, CombatStats)
-        stats_alvo.atual_res = max(stats_alvo.atual_res - dano, 0)
-        self.bus.publish(DamageDealt(alvo=alvo_dano, alvo_player=alvo_dano_player, quantidade=dano, origem="ataque"))
+        res_antes = stats_alvo.atual_res
+        dano_na_criatura = min(dano, res_antes)
+        excedente = dano - dano_na_criatura
+        stats_alvo.atual_res = res_antes - dano_na_criatura
+        self.bus.publish(DamageDealt(alvo=alvo_dano, alvo_player=alvo_dano_player, quantidade=dano_na_criatura, origem="ataque"))
+        if excedente > 0:
+            ps_alvo = self.players[alvo_dano_player]
+            ps_alvo.vida = max(ps_alvo.vida - excedente, 0)
+            # mesma ordem DamageDealt-antes-de-LifeChanged do dano direto (dedup de FX).
+            self.bus.publish(DamageDealt(alvo=None, alvo_player=alvo_dano_player, quantidade=excedente, origem="ataque"))
+            self.bus.publish(LifeChanged(player_id=alvo_dano_player, delta=-excedente, total=ps_alvo.vida))
 
         if stats_alvo.atual_res <= 0:
             self.destruction.destruir(world, alvo_dano, motivo="derrotado em combate")
-            # quem destruiu o combatente do adversario ganha +1 de mana — vale
-            # tanto pro atacante de costume quanto pro defensor quando o dano
-            # volta pra ele por reflexao (Espelho das Ilusões, Retribuição Kármica)
+            # quem CAUSOU o dano ganha +1 de mana — vale pro atacante de
+            # costume, pro defensor quando o dano volta por reflexao (Espelho
+            # das Ilusões, Retribuição Kármica), e agora também pro defensor
+            # quando o próprio atacante morre de contra-ataque por atacar
+            # algo mais forte.
             beneficiario = defensor_player if alvo_dano_player == atacante_player else atacante_player
             ps_beneficiario = self.players[beneficiario]
             ps_beneficiario.mana += 1

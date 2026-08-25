@@ -391,11 +391,17 @@ TCG.resolverAtaque = function resolverAtaque(game, atacantePlayer, atacante, def
     return; // ataque completamente anulado
   }
 
-  // Combatente contra combatente: o dano e a DIFERENCA de Combate entre os
-  // dois, nao o Combate cheio do atacante — dois combatentes parelhos se
-  // arranham pouco, uma diferenca grande de poder e que causa dano de verdade.
-  dano = Math.max(atacante.atualPow - defensor.atualPow, 0);
+  // A diferença de Combate entre os dois combatentes acerta quem tiver o
+  // POW MENOR — não sempre o defensor: atacar um combatente mais forte
+  // agora machuca o próprio ATACANTE (contra-ataque). Combatentes parelhos
+  // não se machucam (diferença 0).
+  dano = Math.abs(atacante.atualPow - defensor.atualPow);
 
+  // Vantagem elemental/Sigurd continuam bonificando o dano com base no
+  // ATACANTE (elemento dele vs. o do defensor; "Dano em dobro contra
+  // Monstros" checando o TIPO do defensor) exatamente como antes — mesmo
+  // que esse dano acabe voltando pro próprio atacante no cenário de
+  // contra-ataque acima.
   const elemA = TCG.elementoEfetivo(atacante);
   const elemD = TCG.elementoEfetivo(defensor);
   if (TCG.VANTAGEM_ELEMENTAL[elemA] === elemD && !defensor.ignoraFraquezaElemental) dano = Math.floor(dano * 1.5);
@@ -407,23 +413,47 @@ TCG.resolverAtaque = function resolverAtaque(game, atacantePlayer, atacante, def
 
   dano = Math.floor(dano * multiplicador);
 
-  let alvoDano = defensor, alvoDanoPlayer = defensorPlayer;
-  if (defensor.damageReflected) { alvoDano = atacante; alvoDanoPlayer = atacantePlayer; }
+  // Quem leva o dano: quem tiver o POW ATUAL menor (empate cai pro
+  // atacante, mas dano já é 0 nesse caso — tanto faz).
+  let alvoDano, alvoDanoPlayer;
+  if (atacante.atualPow <= defensor.atualPow) { alvoDano = atacante; alvoDanoPlayer = atacantePlayer; }
+  else { alvoDano = defensor; alvoDanoPlayer = defensorPlayer; }
+
+  // Reflexão: se quem IA levar o dano tem o escudo, ele volta pro OUTRO
+  // participante do combate (Espelho das Ilusões, Retribuição Kármica).
+  if (alvoDano.damageReflected) {
+    if (alvoDano === atacante) { alvoDano = defensor; alvoDanoPlayer = defensorPlayer; }
+    else { alvoDano = atacante; alvoDanoPlayer = atacantePlayer; }
+  }
 
   // Jardins Suspensos: "todo dano recebido por combatentes de Terra é
-  // reduzido em 3" (passivo) — vale pra dano de combate também, não só de efeito.
+  // reduzido em 3" (passivo) — vale pra quem quer que esteja levando o
+  // dano agora, não só o defensor de costume.
   if (game.reducaoDanoTerra && TCG.elementoEfetivo(alvoDano) === "Terra") {
     dano = Math.max(dano - game.reducaoDanoTerra, 0);
   }
 
-  alvoDano.atualRes = Math.max(alvoDano.atualRes - dano, 0);
-  game.bus.emit("danoCausado", { alvo: alvoDano, alvoPlayer: alvoDanoPlayer, quantidade: dano, origem: "ataque" });
+  // O dano que passar da Resistência da criatura vaza pra vida do PRÓPRIO
+  // dono dela — antes esse excedente era simplesmente descartado.
+  const resAntes = alvoDano.atualRes;
+  const danoNaCriatura = Math.min(dano, resAntes);
+  const excedente = dano - danoNaCriatura;
+  alvoDano.atualRes = resAntes - danoNaCriatura;
+  game.bus.emit("danoCausado", { alvo: alvoDano, alvoPlayer: alvoDanoPlayer, quantidade: danoNaCriatura, origem: "ataque" });
+  if (excedente > 0) {
+    const psAlvo = game.players[alvoDanoPlayer];
+    psAlvo.vida = Math.max(psAlvo.vida - excedente, 0);
+    // mesma ordem danoCausado-antes-de-vidaAlterada do dano direto (dedup de FX).
+    game.bus.emit("danoCausado", { alvo: null, alvoPlayer: alvoDanoPlayer, quantidade: excedente, origem: "ataque" });
+    game.bus.emit("vidaAlterada", { playerId: alvoDanoPlayer, delta: -excedente, total: psAlvo.vida });
+  }
 
   if (alvoDano.atualRes <= 0) {
     TCG.destroyCard(game, alvoDano, "derrotado em combate");
-    // quem destruiu o combatente do adversario ganha +1 de mana — vale tanto
-    // pro atacante de costume quanto pro defensor quando o dano volta pra
-    // ele por reflexao (Espelho das Ilusões, Retribuição Kármica)
+    // quem CAUSOU o dano ganha +1 de mana — vale pro atacante de costume,
+    // pro defensor quando o dano volta por reflexão (Espelho das Ilusões,
+    // Retribuição Kármica), e agora também pro defensor quando o próprio
+    // atacante morre de contra-ataque por atacar algo mais forte.
     const beneficiario = alvoDanoPlayer === atacantePlayer ? defensorPlayer : atacantePlayer;
     const ps = game.players[beneficiario];
     ps.mana += 1;
