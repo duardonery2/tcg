@@ -399,20 +399,23 @@ TCG.resolverAtaque = function resolverAtaque(game, atacantePlayer, atacante, def
     return; // ataque completamente anulado
   }
 
-  // A diferença de Combate entre os dois combatentes acerta quem tiver o
-  // POW MENOR — não sempre o defensor: atacar um combatente mais forte
-  // agora machuca o próprio ATACANTE (contra-ataque). Combatentes parelhos
-  // não se machucam (diferença 0).
-  dano = Math.abs(atacante.atualPow - defensor.atualPow);
-
-  // Vantagem elemental/Sigurd continuam bonificando o dano com base no
-  // ATACANTE (elemento dele vs. o do defensor; "Dano em dobro contra
-  // Monstros" checando o TIPO do defensor) exatamente como antes — mesmo
-  // que esse dano acabe voltando pro próprio atacante no cenário de
-  // contra-ataque acima.
+  // Vantagem elemental: quem tiver vantagem sobre o elemento do OUTRO
+  // ganha +2 de Combate NESTE combate — nos dois papéis (atacando OU
+  // defendendo), não só quando é o atacante. Nunca os dois ao mesmo tempo
+  // (VANTAGEM_ELEMENTAL não tem ciclo de 2 vias). ignoraFraquezaElemental
+  // nega a vantagem do OPONENTE contra quem tem a flag, nos dois papéis.
   const elemA = TCG.elementoEfetivo(atacante);
   const elemD = TCG.elementoEfetivo(defensor);
-  if (TCG.VANTAGEM_ELEMENTAL[elemA] === elemD && !defensor.ignoraFraquezaElemental) dano = Math.floor(dano * 1.5);
+  let atacantePow = atacante.atualPow;
+  let defensorPow = defensor.atualPow;
+  if (TCG.VANTAGEM_ELEMENTAL[elemA] === elemD && !defensor.ignoraFraquezaElemental) atacantePow += 2;
+  else if (TCG.VANTAGEM_ELEMENTAL[elemD] === elemA && !atacante.ignoraFraquezaElemental) defensorPow += 2;
+
+  // A diferença de Combate entre os dois combatentes (já com a vantagem
+  // elemental somada) acerta quem tiver o POW MENOR — não sempre o
+  // defensor: atacar um combatente mais forte machuca o próprio ATACANTE
+  // (contra-ataque). Combatentes parelhos não se machucam (diferença 0).
+  dano = Math.abs(atacantePow - defensorPow);
 
   // Sigurd ("Matador de Feras"): a Habilidade dele so prepara o buff
   // (danoDobradoContraMonstro, NESTE_TURNO); o dano so dobra de verdade se
@@ -421,10 +424,11 @@ TCG.resolverAtaque = function resolverAtaque(game, atacantePlayer, atacante, def
 
   dano = Math.floor(dano * multiplicador);
 
-  // Quem leva o dano: quem tiver o POW ATUAL menor (empate cai pro
-  // atacante, mas dano já é 0 nesse caso — tanto faz).
+  // Quem leva o dano: quem tiver o POW efetivo (já com a vantagem
+  // elemental) menor (empate cai pro atacante, mas dano já é 0 nesse
+  // caso — tanto faz).
   let alvoDano, alvoDanoPlayer;
-  if (atacante.atualPow <= defensor.atualPow) { alvoDano = atacante; alvoDanoPlayer = atacantePlayer; }
+  if (atacantePow <= defensorPow) { alvoDano = atacante; alvoDanoPlayer = atacantePlayer; }
   else { alvoDano = defensor; alvoDanoPlayer = defensorPlayer; }
 
   // Reflexão: se quem IA levar o dano tem o escudo, ele volta pro OUTRO

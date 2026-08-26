@@ -145,21 +145,28 @@ class CombatSystem:
             _emitir_resolvido()
             return  # ataque completamente anulado, sem dano nenhum
 
-        # A diferenca de Combate entre os dois combatentes acerta quem tiver
-        # o POW MENOR — nao sempre o defensor: atacar um combatente mais
-        # forte agora machuca o proprio ATACANTE (contra-ataque). Combatentes
-        # parelhos nao se machucam (diferenca 0).
         stats_d = world.get_component(defensor, CombatStats)
-        dano = abs(stats_a.atual_pow - stats_d.atual_pow)
 
-        # Vantagem elemental/Sigurd continuam bonificando o dano com base no
-        # ATACANTE (elemento dele vs. o do defensor; "Dano em dobro contra
-        # Monstros" checando o TIPO do defensor) exatamente como antes —
-        # mesmo que esse dano acabe voltando pro proprio atacante no cenario
-        # de contra-ataque acima.
+        # Vantagem elemental: quem tiver vantagem sobre o elemento do OUTRO
+        # ganha +2 de Combate NESTE combate — nos dois papeis (atacando OU
+        # defendendo), nao so quando e o atacante. Nunca os dois ao mesmo
+        # tempo (VANTAGEM_ELEMENTAL nao tem ciclo de 2 vias).
+        # IgnoraFraquezaElemental nega a vantagem do OPONENTE contra quem
+        # tem o componente, nos dois papeis.
         elem_d = elemento_efetivo(world, defensor)
+        pow_atacante = stats_a.atual_pow
+        pow_defensor = stats_d.atual_pow
         if VANTAGEM_ELEMENTAL.get(elem_a) == elem_d and not world.has_component(defensor, IgnoraFraquezaElemental):
-            dano = int(dano * 1.5)  # vantagem elemental: dano ampliado
+            pow_atacante += 2
+        elif VANTAGEM_ELEMENTAL.get(elem_d) == elem_a and not world.has_component(atacante, IgnoraFraquezaElemental):
+            pow_defensor += 2
+
+        # A diferenca de Combate entre os dois combatentes (ja com a
+        # vantagem elemental somada) acerta quem tiver o POW MENOR — nao
+        # sempre o defensor: atacar um combatente mais forte machuca o
+        # proprio ATACANTE (contra-ataque). Combatentes parelhos nao se
+        # machucam (diferenca 0).
+        dano = abs(pow_atacante - pow_defensor)
 
         # Sigurd ("Matador de Feras"): a Habilidade dele so prepara o buff
         # (DanoDobradoContraMonstro, NESTE_TURNO); o dano so dobra de verdade
@@ -171,9 +178,10 @@ class CombatSystem:
 
         dano = int(dano * multiplicador)
 
-        # Quem leva o dano: quem tiver o POW ATUAL menor (empate cai pro
-        # atacante, mas dano ja e 0 nesse caso — tanto faz).
-        if stats_a.atual_pow <= stats_d.atual_pow:
+        # Quem leva o dano: quem tiver o POW efetivo (ja com a vantagem
+        # elemental) menor (empate cai pro atacante, mas dano ja e 0 nesse
+        # caso — tanto faz).
+        if pow_atacante <= pow_defensor:
             alvo_dano, alvo_dano_player = atacante, atacante_player
         else:
             alvo_dano, alvo_dano_player = defensor, defensor_player
