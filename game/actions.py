@@ -172,8 +172,14 @@ class ActivateDomainAction:
 @dataclass
 class PlayEnchantmentAction:
     """Fase Tatica: joga um Encantamento da mao. Resolve na hora e vai pra
-    Pilha de Descarte — exceto os Tipo de Encantamento CONTINUO (GAME_DESIGN.md),
-    que ficam em campo num slot de magia em vez de serem descartados."""
+    Pilha de Descarte — exceto dois Tipo de Encantamento que ficam em campo,
+    num slot de magia (GAME_DESIGN.md):
+      - CONTINUO: enquanto o bônus de +Mana por turno estiver ativo.
+      - EQUIPAMENTO: "vestido" no combatente ativo no momento de jogar —
+        some (vai pro Descarte) quando ESSE combatente for destruído, ou
+        quando o próprio Equipamento for destruído por outro efeito (essa
+        segunda metade já vem de graça do próprio efeito da carta usar
+        `registrar_passivo` — ver, ex., Manto da Natureza em effects.py)."""
     player_id: int
     card: int
     slot: int | None = None
@@ -186,22 +192,42 @@ class PlayEnchantmentAction:
 
         info = ctrl.world.get_component(self.card, CardInfo)
         continuo = info.tipo_encantamento is TipoEncantamento.CONTINUO
+        equipamento = info.tipo_encantamento is TipoEncantamento.EQUIPAMENTO
+        fica_em_campo = continuo or equipamento
         lado = ctrl.board.lado(self.player_id)
-        if continuo and self.slot is None and not lado.slots_livres():
-            raise AcaoInvalida("Não há slot de magia livre (limite de 5) pra jogar este Encantamento Contínuo.")
+        if equipamento and lado.monstro is None:
+            raise AcaoInvalida("Não há combatente ativo pra equipar.")
+        if fica_em_campo and self.slot is None and not lado.slots_livres():
+            raise AcaoInvalida("Não há slot de magia livre (limite de 5) pra jogar este Encantamento.")
 
         custo = ctrl.world.get_component(self.card, ManaCost).valor
         _pagar_mana(ctrl, self.player_id, custo)
         ps.mao.remove(self.card)
 
+        # o alvo do Equipamento e fixado AGORA (o combatente ativo no
+        # instante de jogar) — antes do efeito da carta rodar e antes dela
+        # ir pro slot de magia. Fica preso a essa entidade especifica
+        # mesmo que ela volte ao Panteao sem ser destruida depois.
+        alvo_equipado = lado.monstro if equipamento else None
+
         ctrl.bus.publish(EnchantmentPlayed(player_id=self.player_id, card=self.card))
         ctrl.effects.executar(ctrl, info.nome, self.player_id, self.card)
 
         loc = ctrl.world.get_component(self.card, Location)
-        if continuo:
+        if fica_em_campo:
             slot = lado.colocar_magia(self.card, self.slot)
             loc.zona = Zona.CAMPO_MAGIA
             loc.slot = slot
+            if equipamento and alvo_equipado is not None:
+                from .events import CardDestroyed
+                from .triggers import registrar_trigger
+                registrar_trigger(
+                    ctrl, CardDestroyed,
+                    lambda evento, ctrl, card=self.card: ctrl.destruction_system.destruir(
+                        ctrl.world, card, motivo="combatente equipado foi destruído"),
+                    origem_card=self.card, owner_player_id=self.player_id,
+                    condicao=lambda evento, ctrl, alvo=alvo_equipado: evento.card == alvo,
+                )
         else:
             loc.zona = Zona.PILHA_DESCARTE
 

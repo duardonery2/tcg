@@ -22,9 +22,12 @@ carta):
     comentado, nao modelado.
   - Praga da Ferrugem, Gilgamesh ("Compre 1 carta de Equipamento") e
     Desintegração de Realidade ("...ou um Equipamento ligado a um
-    combatente inimigo") dependem de um subtipo "Equipamento" que nao
-    existe nos dados do CSV atual — Gilgamesh compra do Baralho Arcano
-    normal; Desintegração de Realidade só destrói o Domínio.
+    combatente inimigo") citam Equipamento de um jeito mais específico
+    (buscar POR essa subcategoria, ou mirar o Equipamento de um
+    combatente em particular) do que o suporte genérico que existe hoje
+    (TipoEncantamento.EQUIPAMENTO, GAME_DESIGN.md — carta única até aqui:
+    Manto da Natureza) cobre — Gilgamesh compra do Baralho Arcano normal;
+    Desintegração de Realidade só destrói o Domínio.
   - Apoio Incondicional precisaria de um mecanismo de "par de alvos
     vinculados" a parte — placeholder deliberado, cai no fallback de
     `executar` (nenhum efeito registrado, no-op).
@@ -1060,12 +1063,42 @@ def _(ctrl, player_id, card, evento=None):
 
 @EFFECTS.registrar("Manto da Natureza")
 def _(ctrl, player_id, card, evento=None):
+    # Tipo de Encantamento EQUIPAMENTO (GAME_DESIGN.md): fica em campo
+    # "vestido" num combatente específico até ELE ser destruído (o
+    # PlayEnchantmentAction cuida disso, registrando um trigger genérico
+    # de CardDestroyed pro alvo — ver actions.py) ou até o Equipamento em
+    # si ser destruído. registrar_passivo dá o segundo caso de graça: seu
+    # `limpar` já roda automaticamente quando `card` morre (ver
+    # DestructionSystem.destruir -> remover_passivos_de). O `aplicar`
+    # mira sempre NESTA entidade fixa (`alvo`, capturada agora), não
+    # "quem estiver ativo" — diferente do limpar_status_por_origem padrão
+    # (que olha só o combatente ativo de cada lado), pra sobreviver
+    # mesmo que `alvo` volte ao Panteão sem ser destruído.
+    from .triggers import registrar_passivo
+
     alvo = combatente_ativo(ctrl, player_id)
-    if alvo is not None:
+    if alvo is None:
+        return
+
+    def _aplicar(ctrl, player_id, card, alvo=alvo):
         buff(ctrl, alvo, "res", 5, Duracao.PERMANENTE, "Manto da Natureza")
         # "imunidade a Habilidades de Mana inimigas" — checado por Minotauro
         # (Labirinto), Amnésia Mágica e Roubo de Essência antes de agir.
-        ctrl.world.add_component(alvo, ImuneAHabilidadesInimigas())
+        if not ctrl.world.has_component(alvo, ImuneAHabilidadesInimigas):
+            ctrl.world.add_component(alvo, ImuneAHabilidadesInimigas())
+
+    def _limpar(ctrl, card, alvo=alvo):
+        statuses = ctrl.world.get_component(alvo, StatusEffects)
+        if statuses is not None:
+            antes = len(statuses.itens)
+            statuses.itens = [s for s in statuses.itens if s.origem != "Manto da Natureza"]
+            if len(statuses.itens) != antes:
+                _recalcular_stats(ctrl.world, alvo)
+        if ctrl.world.has_component(alvo, ImuneAHabilidadesInimigas):
+            ctrl.world.remove_component(alvo, ImuneAHabilidadesInimigas)
+
+    registrar_passivo(ctrl, player_id, card, _aplicar, _limpar)
+    _aplicar(ctrl, player_id, card)
 
 
 # ---- Encantamentos Contínuos (GAME_DESIGN.md) ----------------------------

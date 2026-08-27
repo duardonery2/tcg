@@ -741,13 +741,35 @@ reg("Purificação Arcana", (game, playerId) => {
   pedirUma(2);
 });
 
-reg("Manto da Natureza", (game, playerId) => {
+// Tipo de Encantamento EQUIPAMENTO (GAME_DESIGN.md): fica em campo
+// "vestido" num combatente específico até ELE ser destruído (o branch de
+// Encantamento em jogarCartaDeCampo cuida disso, registrando um trigger
+// genérico de "cartaDestruida" pro alvo — ver actions.js) ou até o
+// próprio Equipamento ser destruído. TCG.registrarPassivo dá o segundo
+// caso de graça: seu `limpar` já roda automaticamente quando `carta`
+// morre (ver TCG.destroyCard -> TCG.removerPassivosDe). O `aplicar` mira
+// sempre NESTE alvo fixo (capturado agora), não "quem estiver ativo" —
+// diferente do TCG.limparStatusPorOrigem padrão (que olha só o
+// combatente ativo de cada lado), pra sobreviver mesmo que o alvo volte
+// ao Panteão sem ser destruído.
+reg("Manto da Natureza", (game, playerId, carta) => {
   const alvo = TCG.combatenteAtivo(game, playerId);
   if (!alvo) return;
-  TCG.buff(game, alvo, "res", 5, "PERMANENTE", "Manto da Natureza");
-  // "imunidade a Habilidades de Mana inimigas" — checado por Minotauro,
-  // Amnésia Mágica e Roubo de Essência antes de agir.
-  alvo.imuneAHabilidadesInimigas = true;
+
+  const aplicar = () => {
+    TCG.buff(game, alvo, "res", 5, "PERMANENTE", "Manto da Natureza");
+    // "imunidade a Habilidades de Mana inimigas" — checado por Minotauro,
+    // Amnésia Mágica e Roubo de Essência antes de agir.
+    alvo.imuneAHabilidadesInimigas = true;
+  };
+  const limpar = () => {
+    const antes = alvo.statusEffects.length;
+    alvo.statusEffects = alvo.statusEffects.filter((st) => st.origem !== "Manto da Natureza");
+    if (alvo.statusEffects.length !== antes) TCG.recalcularStats(alvo);
+    alvo.imuneAHabilidadesInimigas = false;
+  };
+  TCG.registrarPassivo(game, playerId, carta, aplicar, limpar);
+  aplicar();
 });
 
 // ---- Encantamentos Contínuos (GAME_DESIGN.md) ----------------------------

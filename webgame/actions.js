@@ -101,16 +101,43 @@ TCG.acoes = {
       game.bus.emit("dominioAtivado", { playerId, carta, slot: s });
       TCG.executarEfeito(game, carta.nome, playerId, carta);
     } else if (carta.tipo === "Encantamento") {
+      // dois Tipo de Encantamento ficam em campo, num slot de magia
+      // (GAME_DESIGN.md), em vez de ir pro descarte na hora: Contínuo
+      // (enquanto o bônus de Mana durar) e Equipamento ("vestido" no
+      // combatente ativo até ELE ser destruído, ou até o próprio
+      // Equipamento ser destruído — essa segunda metade já vem de graça
+      // do efeito da carta usar TCG.registrarPassivo, ver effects.js).
       const continuo = carta.tipoEncantamento === "Contínuo";
-      if (continuo && slot === null && TCG.Board.slotsLivres(lado).length === 0) {
-        throw new TCG.AcaoInvalida("Não há slot de magia livre (limite de 5) pra jogar este Encantamento Contínuo.");
+      const equipamento = carta.tipoEncantamento === "Equipamento";
+      const ficaEmCampo = continuo || equipamento;
+      if (equipamento && lado.monstro === null) {
+        throw new TCG.AcaoInvalida("Não há combatente ativo pra equipar.");
+      }
+      if (ficaEmCampo && slot === null && TCG.Board.slotsLivres(lado).length === 0) {
+        throw new TCG.AcaoInvalida("Não há slot de magia livre (limite de 5) pra jogar este Encantamento.");
       }
       pagarMana(game, playerId, carta.custoMana);
       ps.mao.splice(ps.mao.indexOf(carta), 1);
+
+      // o alvo do Equipamento e fixado AGORA (o combatente ativo no
+      // instante de jogar) — antes do efeito da carta rodar e antes dela
+      // ir pro slot de magia. Fica preso a essa entidade especifica
+      // mesmo que ela volte ao Panteao sem ser destruida depois.
+      const alvoEquipado = equipamento ? lado.monstro : null;
+
       game.bus.emit("encantamentoJogado", { playerId, carta });
       TCG.executarEfeito(game, carta.nome, playerId, carta);
-      if (continuo) {
+      if (ficaEmCampo) {
         TCG.Board.colocarMagia(lado, carta, slot);
+        if (equipamento && alvoEquipado !== null) {
+          TCG.registrarTrigger(game, {
+            eventoTipo: "cartaDestruida",
+            origemCarta: carta,
+            ownerPlayerId: playerId,
+            condicao: (evento) => evento.carta === alvoEquipado,
+            efeito: () => TCG.destroyCard(game, carta, "combatente equipado foi destruído"),
+          });
+        }
       } else {
         game.descarte[playerId].push(carta);
       }
