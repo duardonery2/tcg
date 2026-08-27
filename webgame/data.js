@@ -538,7 +538,7 @@ const CARTAS = [
     "combate": null,
     "efeito": "O combatente ganha +5 de Resistência permanente e imunidade a Habilidades de Mana inimigas.",
     "custoHabilidade": null,
-    "tipoEncantamento": "Simples"
+    "tipoEncantamento": "Equipamento"
   },
   {
     "nome": "Escudo de Gelo Absoluto",

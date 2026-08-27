@@ -754,8 +754,8 @@ reg("Manto da Natureza", (game, playerId) => {
 //
 // Custo de Mana 0 de propósito — o "custo" real é o sacrifício pago no
 // próprio efeito (descarte, vida, POW/RES). Diferente de um Encantamento
-// normal, ficam em campo (TCG.acoes.jogarCartaDeCampo checa
-// ENCANTAMENTOS_CONTINUOS pelo NOME, em actions.js) enquanto o bônus de
+// Simples/Equipamento, ficam em campo (TCG.acoes.jogarCartaDeCampo checa
+// carta.tipoEncantamento === "Contínuo", em actions.js) enquanto o bônus de
 // +Mana por turno estiver ativo — mesmo padrão de
 // registrarPassivo/limpa-e-reaplica já usado pelos Domínios (Vulcão
 // Primordial, Jardins Suspensos...), só que somando num contador por

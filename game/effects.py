@@ -1072,9 +1072,10 @@ def _(ctrl, player_id, card, evento=None):
 #
 # Custo de Mana 0 de propósito — o "custo" real é o sacrifício pago no
 # próprio efeito (descarte, Pontos de Vida, POW/RES). Diferente de um
-# Encantamento normal, ficam em campo (ActionsPlayEnchantmentAction checa
-# `ENCANTAMENTOS_CONTINUOS` pelo NOME, não um campo novo no CSV) enquanto o
-# bônus de +Mana por turno estiver ativo — mesmo padrão de
+# Encantamento Simples/Equipamento, ficam em campo (PlayEnchantmentAction
+# checa CardInfo.tipo_encantamento is TipoEncantamento.CONTINUO — coluna
+# "Tipo de Encantamento" do CSV) enquanto o bônus de +Mana por turno
+# estiver ativo — mesmo padrão de
 # registrar_passivo/limpa-e-reaplica já usado pelos Domínios (Vulcão
 # Primordial, Jardins Suspensos...), só que somando num contador por
 # JOGADOR (ctrl.bonus_mana_por_turno) em vez de um StatusEffect por carta,
