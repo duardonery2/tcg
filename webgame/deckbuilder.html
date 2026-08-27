@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>O Duelo dos Feiticeiros — Construção de Baralho</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header>
+  <h1>Construção de Baralho</h1>
+</header>
+
+<main class="tela-deckbuilder">
+  <div class="pools">
+    <div class="pool-secao">
+      <div class="pool-secao__cabecalho">
+        <h2>Panteão</h2>
+        <span class="pool-secao__contador" id="contador-panteao"></span>
+      </div>
+      <div class="pool-secao__aviso" id="aviso-panteao"></div>
+      <div class="pool-grid" id="grid-panteao"></div>
+    </div>
+
+    <div class="pool-secao">
+      <div class="pool-secao__cabecalho">
+        <h2>Baralho Arcano</h2>
+        <span class="pool-secao__contador" id="contador-arcano"></span>
+      </div>
+      <div class="pool-secao__aviso"></div>
+      <div class="pool-grid" id="grid-arcano"></div>
+    </div>
+  </div>
+
+  <aside class="painel-lateral">
+    <div class="controles">
+      <button class="acao" id="btn-salvar-jogar">Salvar e Jogar</button>
+      <button class="acao" id="btn-restaurar">Restaurar Automático</button>
+      <button class="acao" id="btn-voltar-menu">Voltar ao Menu</button>
+    </div>
+    <div class="erros-deck" id="erros-deck"></div>
+    <div id="preview">
+      <div class="vazio" id="preview-vazio">Passe o mouse sobre uma carta</div>
+      <img id="preview-img" style="display:none" alt="" />
+      <div class="legenda" id="preview-legenda" style="display:none">
+        <div class="nome" id="preview-nome"></div>
+        <div class="meta" id="preview-meta"></div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="deckbuilder.js"></script>
+</body>
+</html>

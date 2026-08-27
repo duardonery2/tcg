@@ -10,6 +10,12 @@ TCG.MAO_INICIAL = 4;
 TCG.MANA_POR_TURNO = 2;
 TCG.LIMITE_MAO = 6;
 TCG.PANTEAO_TAMANHO = 5;
+// Tamanho mínimo do Baralho Arcano num deck CUSTOMIZADO (ver
+// TCG.validarDeckCustomizado abaixo, webgame/deckbuilder.js) — não existe
+// teto além do próprio pool (44 cartas de suporte). Só se aplica a um deck
+// escolhido à mão; a geração automática sempre usa as 44 inteiras, como
+// sempre fez.
+TCG.BARALHO_ARCANO_MINIMO = 20;
 
 let _proximoInstanceId = 1;
 
@@ -103,18 +109,100 @@ TCG.nomeOuId = function nomeOuId(carta) {
 
 // ---- criacao da partida ---------------------------------------------------
 
-function montarJogadorDados(playerId, rng) {
+// Resolve uma lista de NOMES (do jeito que um deck fica salvo no
+// localStorage — ver webgame/deckbuilder.js) pras cartas de verdade do pool
+// dado, ignorando (com aviso) qualquer nome que não bata com nada — protege
+// contra um data.js regenerado que tenha removido/renomeado uma carta citada
+// num deck salvo antigo.
+TCG.resolverNomesParaCartas = function resolverNomesParaCartas(nomes, pool) {
+  const porNome = new Map(pool.map((c) => [c.nome, c]));
+  const resolvidas = [];
+  for (const nome of nomes) {
+    const carta = porNome.get(nome);
+    if (carta) resolvidas.push(carta);
+    else console.warn(`Deck salvo cita carta desconhecida: ${nome}`);
+  }
+  return resolvidas;
+};
+
+// Única fonte de verdade pra "esse deck customizado é jogável?" — usada
+// tanto pelo deckbuilder (a cada mudança de seleção, pra habilitar "Salvar e
+// Jogar") quanto defensivamente aqui embaixo em montarJogadorDados (caso o
+// localStorage tenha sido editado à mão ou um data.js novo tenha invalidado
+// um save antigo).
+TCG.validarDeckCustomizado = function validarDeckCustomizado(deckCustom) {
+  const erros = [];
+  if (!deckCustom || !Array.isArray(deckCustom.panteao) || !Array.isArray(deckCustom.baralhoArcano)) {
+    return { valido: false, erros: ["Formato de deck inválido."] };
+  }
+  if (new Set(deckCustom.panteao).size !== deckCustom.panteao.length) erros.push("Panteão tem cartas repetidas.");
+  if (deckCustom.panteao.length !== TCG.PANTEAO_TAMANHO) {
+    erros.push(`O Panteão precisa ter exatamente ${TCG.PANTEAO_TAMANHO} combatentes (tem ${deckCustom.panteao.length}).`);
+  }
+  if (new Set(deckCustom.baralhoArcano).size !== deckCustom.baralhoArcano.length) erros.push("Baralho Arcano tem cartas repetidas.");
+  if (deckCustom.baralhoArcano.length < TCG.BARALHO_ARCANO_MINIMO) {
+    erros.push(`O Baralho Arcano precisa ter pelo menos ${TCG.BARALHO_ARCANO_MINIMO} cartas (tem ${deckCustom.baralhoArcano.length}).`);
+  }
+  const combatentesValidos = new Set(CARTAS.filter((c) => c.tipo === "Herói" || c.tipo === "Monstro").map((c) => c.nome));
+  const apoioValidos = new Set(CARTAS.filter((c) => c.tipo !== "Herói" && c.tipo !== "Monstro").map((c) => c.nome));
+  for (const nome of deckCustom.panteao) if (!combatentesValidos.has(nome)) erros.push(`"${nome}" não é um Herói/Monstro válido.`);
+  for (const nome of deckCustom.baralhoArcano) if (!apoioValidos.has(nome)) erros.push(`"${nome}" não é uma carta de Baralho Arcano válida.`);
+  return { valido: erros.length === 0, erros };
+};
+
+// Chave única do localStorage pro deck do jogador local — usada por
+// main.js (lê ao começar uma partida), menu.js (lê pra mostrar o status) e
+// deckbuilder.js (lê pra pré-preencher a seleção, escreve ao salvar).
+// Centralizado aqui em vez de duplicado nas 3 páginas — nenhuma delas
+// precisa saber o nome da chave, só chamar TCG.carregarDeckSalvo().
+TCG.CHAVE_DECK_LOCAL = "tcg_deck_local_v1";
+
+TCG.carregarDeckSalvo = function carregarDeckSalvo() {
+  try {
+    const bruto = localStorage.getItem(TCG.CHAVE_DECK_LOCAL);
+    if (!bruto) return null;
+    const deck = JSON.parse(bruto);
+    const { valido, erros } = TCG.validarDeckCustomizado(deck);
+    if (!valido) {
+      console.warn("Deck salvo inválido, ignorando e usando geração automática:", erros);
+      return null;
+    }
+    return deck;
+  } catch (e) {
+    console.warn("Deck salvo corrompido, ignorando:", e);
+    return null;
+  }
+};
+
+// `deckCustom` (opcional): { panteao: [nomes...5], baralhoArcano: [nomes...] }
+// — quando ausente ou inválido, cai no comportamento de sempre (sorteio
+// aleatório de 5 combatentes + Baralho Arcano completo), sem diferença
+// nenhuma de comportamento pra quem não usa o deckbuilder.
+function montarJogadorDados(playerId, rng, deckCustom) {
   const combatentesTemplates = CARTAS.filter((c) => c.tipo === "Herói" || c.tipo === "Monstro");
   const apoioTemplates = CARTAS.filter((c) => c.tipo !== "Herói" && c.tipo !== "Monstro");
 
-  const sorteados = rng.sample(combatentesTemplates, TCG.PANTEAO_TAMANHO);
+  let sorteados = null;
+  let apoioEscolhido = null;
+  if (deckCustom) {
+    const { valido, erros } = TCG.validarDeckCustomizado(deckCustom);
+    if (valido) {
+      sorteados = TCG.resolverNomesParaCartas(deckCustom.panteao, combatentesTemplates);
+      apoioEscolhido = TCG.resolverNomesParaCartas(deckCustom.baralhoArcano, apoioTemplates);
+    } else {
+      console.warn("Deck customizado inválido, usando geração automática:", erros);
+    }
+  }
+  if (!sorteados) sorteados = rng.sample(combatentesTemplates, TCG.PANTEAO_TAMANHO);
+  if (!apoioEscolhido) apoioEscolhido = apoioTemplates;
+
   const panteaoInstancias = sorteados.map(TCG.criarCardInstance);
-  const baralhoInstancias = apoioTemplates.map(TCG.criarCardInstance);
+  const baralhoInstancias = apoioEscolhido.map(TCG.criarCardInstance);
 
   return { panteaoInstancias, baralhoInstancias };
 }
 
-TCG.criarJogo = function criarJogo({ seed = null, nomes = { 1: "Você", 2: "Oponente" } } = {}) {
+TCG.criarJogo = function criarJogo({ seed = null, nomes = { 1: "Você", 2: "Oponente" }, decksCustomizados = {} } = {}) {
   const rng = TCG.criarRng(seed);
   const bus = new TCG.EventBus();
   const jogadores = [1, 2];
@@ -153,7 +241,7 @@ TCG.criarJogo = function criarJogo({ seed = null, nomes = { 1: "Você", 2: "Opon
     game.players[pid] = { playerId: pid, nome: nomes[pid], mana: TCG.MANA_INICIAL, vida: TCG.VIDA_INICIAL, mao: [] };
     game.board[pid] = TCG.criarLadoTabuleiro(pid);
 
-    const { panteaoInstancias, baralhoInstancias } = montarJogadorDados(pid, rng);
+    const { panteaoInstancias, baralhoInstancias } = montarJogadorDados(pid, rng, decksCustomizados[pid]);
     game.panteoes[pid] = TCG.criarDeck(`Panteão de ${nomes[pid]}`, panteaoInstancias);
     game.baralhos[pid] = TCG.criarDeck(`Baralho Arcano de ${nomes[pid]}`, baralhoInstancias);
   }

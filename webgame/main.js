@@ -10,7 +10,14 @@ const JOGADOR_LOCAL = 1;
 const JOGADOR_IA = 2;
 
 function novaPartida(seed) {
-  const game = TCG.criarJogo({ seed, nomes: { 1: "Você", 2: "Oponente" } });
+  // Baralho customizado (webgame/deckbuilder.html) salvo pro jogador local —
+  // TCG.carregarDeckSalvo (engine.js) já valida e volta null se ausente ou
+  // inválido, caso em que o comportamento é o de sempre (Panteão sorteado +
+  // Baralho Arcano completo), sem diferença nenhuma pra quem nunca abriu o
+  // deckbuilder.
+  const deckSalvo = TCG.carregarDeckSalvo();
+  const decksCustomizados = deckSalvo ? { [JOGADOR_LOCAL]: deckSalvo } : {};
+  const game = TCG.criarJogo({ seed, nomes: { 1: "Você", 2: "Oponente" }, decksCustomizados });
   TCG.iniciarJogo(game);
   window.game = game;
   window.ui = TCG.criarUI(game, JOGADOR_LOCAL);
