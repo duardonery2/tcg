@@ -2,7 +2,7 @@
 """Carrega o CSV do projeto (a mesma fonte de verdade usada por
 scripts/renderizar_cartas.py) e cria as entidades ECS.
 
-Decisao de design: o CSV e uma lista de 60 CARTAS UNICAS (um "pool"), nao uma
+Decisao de design: o CSV e uma lista de 70 CARTAS UNICAS (um "pool"), nao uma
 lista de copias de um deck construido. Pra um duelo de 2 jogadores, cada
 jogador recebe seu PROPRIO conjunto de entidades a partir do mesmo pool
 (mao espelhada) — assim cada carta em campo pertence sem ambiguidade a um
@@ -61,10 +61,10 @@ def carregar_csv_para_jogador(
     rng: random.Random | None = None,
 ) -> tuple[list[int], list[int]]:
     """Cria as entidades desse jogador a partir do CSV (Owner(player_id)).
-    O CSV e um POOL de 60 cartas unicas, nao uma lista de decks prontos —
+    O CSV e um POOL de 70 cartas unicas, nao uma lista de decks prontos —
     cada jogador recebe copias proprias (mao espelhada) de todo o Baralho
     Arcano (Domínio/Encantamento/Maldição, 40 cartas), mas o Panteão exige
-    EXATAMENTE 5 Combatentes (GAME_DESIGN.md), entao sorteamos 5 dos 20
+    EXATAMENTE 5 Combatentes (GAME_DESIGN.md), entao sorteamos 5 dos 26
     Heróis/Monstros do pool pra esse jogador — cada jogador sorteia o seu,
     entao os dois lados normalmente saem com Panteões diferentes.
 

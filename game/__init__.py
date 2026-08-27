@@ -11,7 +11,7 @@ Modulos:
     phases      - troca de fase do turno.
     systems     - regras gerais (recurso, combate, destruicao).
     actions     - Acoes do Jogador (Invocar, Atacar, Ativar Habilidade...).
-    effects     - efeito de cada uma das 60 cartas.
+    effects     - efeito de cada uma das 70 cartas.
     loader      - le o CSV do projeto e cria as entidades.
     controller  - GameController: a API publica.
     gui         - interface grafica em Pygame.

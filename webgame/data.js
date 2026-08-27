@@ -767,5 +767,77 @@ const CARTAS = [
     "efeito": "Seu combatente em campo perde 2 de Combate e 2 de Resistência, permanentemente, ao jogar. Enquanto em campo, ganha +2 de Mana por turno.",
     "custoHabilidade": null,
     "tipoEncantamento": "Contínuo"
+  },
+  {
+    "nome": "Gnomos das Minas",
+    "arquivo": "../cards/Gnomos_das_Minas.png",
+    "tipo": "Monstro",
+    "elemento": "Terra",
+    "custoMana": 1,
+    "resistencia": 12,
+    "combate": 6,
+    "efeito": "Uma vez por turno ganha 2 de Mana.",
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
+  },
+  {
+    "nome": "Soldados de Camelot",
+    "arquivo": "../cards/Soldados_de_Camelot.png",
+    "tipo": "Herói",
+    "elemento": null,
+    "custoMana": 2,
+    "resistencia": 15,
+    "combate": 13,
+    "efeito": "Uma vez por turno ganha 2 de Mana.",
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
+  },
+  {
+    "nome": "Zumbis Errantes",
+    "arquivo": "../cards/Zumbis_Errantes.png",
+    "tipo": "Monstro",
+    "elemento": "Terra",
+    "custoMana": 2,
+    "resistencia": 13,
+    "combate": 9,
+    "efeito": "Uma vez por turno ganha 3 de Mana.",
+    "custoHabilidade": 2,
+    "tipoEncantamento": null
+  },
+  {
+    "nome": "Fadas do Bosque",
+    "arquivo": "../cards/Fadas_do_Bosque.png",
+    "tipo": "Monstro",
+    "elemento": "Vento",
+    "custoMana": 1,
+    "resistencia": 9,
+    "combate": 7,
+    "efeito": "Uma vez por turno compra 1 carta do Baralho Arcano.",
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
+  },
+  {
+    "nome": "Sombras Noturnas",
+    "arquivo": "../cards/Sombras_Noturnas.png",
+    "tipo": "Monstro",
+    "elemento": null,
+    "custoMana": 1,
+    "resistencia": 8,
+    "combate": 8,
+    "efeito": "Uma vez por turno compra 1 carta do Baralho Arcano.",
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
+  },
+  {
+    "nome": "Cultistas do Abismo",
+    "arquivo": "../cards/Cultistas_do_Abismo.png",
+    "tipo": "Monstro",
+    "elemento": "Água",
+    "custoMana": 2,
+    "resistencia": 11,
+    "combate": 10,
+    "efeito": "Uma vez por turno compra 1 carta do Baralho Arcano, mas perde 1 ponto de Vida.",
+    "custoHabilidade": 2,
+    "tipoEncantamento": null
   }
 ];

@@ -127,7 +127,7 @@ def build_html(row, css, art_path):
         )
 
     # Efeito Secundário / Efeito Passivo (colunas novas do CSV) — em fonte
-    # reduzida, só aparecem quando preenchidos; nenhuma das 64 cartas atuais
+    # reduzida, só aparecem quando preenchidos; nenhuma das 70 cartas atuais
     # usa isso ainda, então isso fica invisível até uma carta futura preencher.
     extra_html = ""
     secundario = _val(row, "Efeito Secundário")

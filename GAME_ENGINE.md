@@ -20,7 +20,7 @@ Uma carta não é uma classe com métodos (`Carta.atacar()`, `Carta.ativarHabili
 | `systems.py` | `ResourceSystem` (compra + mana), `CombatSystem` (vantagem elemental, POW vs RES, dano ao jogador quando não há bloqueador), `DestructionSystem` (ponto único onde uma carta morre — limpa o slot do tabuleiro, dispara `CardAboutToBeDestroyed`/`CardDestroyed` e limpa passivos/gatilhos da carta). |
 | `triggers.py` | Pilha de gatilhos + efeitos passivos (`registrar_trigger`, `registrar_passivo`, `aplicar_passivos`) — ver seção própria abaixo. |
 | `actions.py` | As Ações do Jogador: `SummonAction`, `ActivateAbilityAction`, `ActivateDomainAction`, `PlayEnchantmentAction`, `SetCurseAction`, `ActivateSetCurseAction`, `DeclareAttackAction`, `ShuffleAction`. |
-| `effects.py` | O efeito de cada uma das 60 cartas, como composição de ~15 primitivas (`buff`, `curar`, `dano_combatente`, `comprar`, `descartar_aleatorias`, `destruir`, `retornar_ao_panteao`...), usando `EFFECTS.registrar`/`registrar_passivo` + `triggers.registrar_trigger` conforme o caso. |
+| `effects.py` | O efeito de cada uma das 70 cartas, como composição de ~15 primitivas (`buff`, `curar`, `dano_combatente`, `comprar`, `descartar_aleatorias`, `destruir`, `retornar_ao_panteao`...), usando `EFFECTS.registrar`/`registrar_passivo` + `triggers.registrar_trigger` conforme o caso. |
 | `loader.py` | Lê o CSV do projeto e cria as entidades. |
 | `controller.py` | `GameController` — a API pública única. |
 | `gui.py` | Interface gráfica em Pygame. |
@@ -28,7 +28,7 @@ Uma carta não é uma classe com métodos (`Carta.atacar()`, `Carta.ativarHabili
 
 ## Decisões de design que valem registrar
 
-- **O CSV é um pool de 60 cartas únicas, não um deck pronto.** Cada jogador recebe cópias próprias das 40 cartas de suporte (Domínio/Encantamento/Maldição) e sorteia 5 dos 20 Heróis/Monstros pra montar seu próprio Panteão — os dois lados normalmente saem com Panteões diferentes.
+- **O CSV é um pool de 70 cartas únicas, não um deck pronto.** Cada jogador recebe cópias próprias das 40 cartas de suporte (Domínio/Encantamento/Maldição) e sorteia 5 dos 26 Heróis/Monstros pra montar seu próprio Panteão — os dois lados normalmente saem com Panteões diferentes.
 - **Dano "direto"/sem combatente-alvo acerta os Pontos de Vida do jogador**, implementando a regra fechada em `GAME_DESIGN.md`.
 - **`DestructionSystem` é o único lugar onde uma carta morre.** Um bug real apareceu durante o desenvolvimento — um combatente destruído em combate continuava marcado como `.monstro` ativo e seguia atacando — porque a limpeza do slot estava duplicada em vários lugares. Centralizar resolveu.
 

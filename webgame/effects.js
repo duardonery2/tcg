@@ -1,4 +1,4 @@
-// Efeitos de carta: as ~60 cartas cobertas em game/effects.py, traduzidas 1:1,
+// Efeitos de carta: as ~70 cartas cobertas em game/effects.py, traduzidas 1:1,
 // como composicao de primitivas. Efeitos com uma parte PASSIVA ("enquanto
 // ativo...") ou de GATILHO ("Quando"/"Sempre que"/"No início do turno") usam
 // regPassivo/TCG.registrarTrigger (ver triggers.js) em vez de mutar o estado
@@ -343,6 +343,31 @@ reg("Minotauro", (game, playerId) => {
 reg("Quimera", (game, playerId, carta) => {
   const alvo = TCG.combatenteAtivo(game, TCG.oponenteDe(game, playerId));
   if (alvo && TCG.elementoEfetivo(alvo) === "Terra") TCG.buff(game, carta, "pow", 2, "NESTE_TURNO", "Três Cabeças");
+});
+
+// ---- Combatentes de Suporte (GAME_DESIGN.md, "Diretrizes de Design de
+// Combatentes") ----------------------------------------------------------
+//
+// Faixa de POW até 14: baratos, focados em busca de carta e farm de Mana
+// pra abrir caminho pro combatente Poderoso — não em brigar (por isso a
+// Habilidade de cada um é só um dos dois primitivos de sempre, comprar/
+// ganharMana, sem nenhum efeito de combate).
+
+// ganha 2, Custo de Habilidade é 1 -> +1 de Mana líquido por ativação,
+// senão a Habilidade só pagaria a si mesma (sem farm de verdade).
+reg("Gnomos das Minas", (game, playerId) => TCG.ganharMana(game, playerId, 2));
+
+reg("Soldados de Camelot", (game, playerId) => TCG.ganharMana(game, playerId, 2)); // mesma lógica acima
+
+reg("Zumbis Errantes", (game, playerId) => TCG.ganharMana(game, playerId, 3)); // Custo de Habilidade 2 -> +1 líquido
+
+reg("Fadas do Bosque", (game, playerId) => TCG.comprar(game, playerId, 1));
+
+reg("Sombras Noturnas", (game, playerId) => TCG.comprar(game, playerId, 1));
+
+reg("Cultistas do Abismo", (game, playerId) => {
+  TCG.comprar(game, playerId, 1);
+  TCG.danoJogador(game, playerId, 1, "Cultistas do Abismo");
 });
 
 // ---- Domínios ----------------------------------------------------------

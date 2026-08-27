@@ -57,33 +57,33 @@ Os atributos base dos Heróis e Monstros possuem um limite natural de 20 pontos,
 
 ---
 
-## Diretrizes de Design de Combatentes (notas de design para cartas futuras)
+## Diretrizes de Design de Combatentes
 
-Esta seção registra a filosofia de curva de poder e a taxonomia pretendidas para o Panteão. São diretrizes pra orientar a criação de novos Heróis/Monstros — não uma regra que o motor já aplica sobre os 20 Heróis/Monstros existentes.
+Esta seção registra a filosofia de curva de poder e a taxonomia do Panteão. Os 20 Heróis/Monstros originais são todos Intermediário/Poderoso (ver tabela abaixo); os 6 combatentes de Suporte adicionados depois (Gnomos das Minas, Soldados de Camelot, Zumbis Errantes, Fadas do Bosque, Sombras Noturnas, Cultistas do Abismo) são os primeiros a seguir essas diretrizes de verdade.
 
-**Curva de poder — farm antes do finalizador:** a partida deve começar com combatentes fracos, usados pra gerar Mana e comprar cartas ("farm"), abrindo caminho pra invocar combatentes poderosos mais à frente. Um combatente poderoso não deve ser invocável no primeiro turno — na prática, isso significa dar a ele um Custo de Mana alto o bastante pra nunca caber nos 5 de Mana inicial (ver "Preparação e Baralhos").
+**Curva de poder — farm antes do finalizador:** a partida deve começar com combatentes fracos, usados pra gerar Mana e comprar cartas ("farm"), abrindo caminho pra invocar combatentes poderosos mais à frente. Um combatente poderoso não deve ser invocável no primeiro turno — na prática, isso significa dar a ele um Custo de Mana alto o bastante pra nunca caber nos 5 de Mana inicial (ver "Preparação e Baralhos"). Isso vale pro Custo de Mana IMPRESSO na carta; o Panteão de cada jogador ainda é sorteado (5 de todo o pool de combatentes, `game/loader.py`), então nada garante que um jogador puxe um Suporte cedo — a curva de poder molda o que dá pra fazer com a Mana disponível, não o sorteio em si.
 
 **Papéis por faixa de Combate (POW):**
 
 | Faixa de POW | Papel | Descrição |
 |---|---|---|
-| **até 10** | Suporte | Combatente barato focado em busca de carta e farm de Mana, não em brigar. |
+| **até 10** | Suporte | Combatente barato focado em busca de carta e farm de Mana, não em brigar. Habilidade é só `comprar`/`ganhar_mana` — sem efeito de combate. |
 | **11–16** | Intermediário | Eficiente em Mana, se sustenta sozinho em campo, e prepara o caminho pro combatente poderoso seguinte. Tipicamente tem Resistência alta e um efeito complementar (não um finalizador). |
 | **17–20** | Poderoso | O finalizador do Panteão — nunca deve ser invocável no primeiro turno (ver acima). |
 
-**Função (nova taxonomia, além de Herói/Monstro):** cada combatente também tem uma Função — uma subcategoria dentro de Herói/Monstro: **Guerreiro, Arqueiro, Mago, Dragão, Primordial, Deus, Demônio, Espírito**.
+Soldados de Camelot (Custo de Mana 2, POW 13) fica na ponta de cima do Suporte, quase entrando no Intermediário — a faixa é uma referência pra guiar Custo de Mana vs. POW, não um teto rígido por Custo.
 
-**Efeito primário e secundário:** um combatente pode ter dois efeitos em vez de um — um primário e um secundário. Quando a carta tem os dois, ambos são impressos em fonte reduzida, pra caber os dois no mesmo espaço da carta.
+**Função (subcategoria dentro de Herói/Monstro):** a lista original era Guerreiro, Arqueiro, Mago, Dragão, Primordial, Deus, Demônio, Espírito; os 6 Suporte acrescentaram **Artesão** (Gnomos das Minas) e **Morto-Vivo** (Zumbis Errantes) — a lista é extensível, uma carta temática nova pode introduzir uma Função nova em vez de forçar uma das existentes. É só descritiva (aparece na barra sob a arte, `scripts/renderizar_cartas.py`) — nenhuma regra do motor lê esse campo.
 
-**Elemento:** a lista de Naturezas Elementais de combatente passa a incluir **Neutro**, além de Fogo, Água, Terra e Vento — um combatente Neutro não tem vantagem nem desvantagem elemental contra nenhuma Natureza (ver "Combate e Sistema Elemental" acima).
+**Elemento Neutro:** um combatente sem elemento usa `-` na coluna Elemento (`Elemento.NENHUM`/Elemento `null` em JS) — a mesma convenção que Domínio/Encantamento/Maldição já usavam. Isso já FUNCIONA como "Neutro" sem nenhuma mudança de motor: a tabela de vantagem elemental (`VANTAGEM_ELEMENTAL`/`Combate e Sistema Elemental` acima) só tem entradas pra Fogo/Água/Terra/Vento, então um combatente `-` nunca dá nem sofre o bônus de +2 POW por vantagem elemental, nos dois papéis (atacando ou defendendo). Soldados de Camelot e Sombras Noturnas usam essa convenção.
 
-> Nada disso está implementado no motor ainda (nem no CSV, nem em `game/`/`webgame/`) — é a especificação pra quando novas cartas seguindo essas diretrizes forem adicionadas.
+**Efeito primário e secundário:** um combatente pode ter dois efeitos em vez de um — um primário e um secundário, usando a coluna "Efeito Secundário" do CSV (mesma reservada pra Encantamentos/Domínios). Ainda não usada por nenhum combatente — os 6 de Suporte ficaram só com um efeito cada, deliberadamente simples.
 
 ---
 
 ## Vocabulário de Mecânicas: Ações do Jogador vs. Gatilhos de Evento
 
-As 64 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comum. Vale separar esse vocabulário em dois tipos, porque a diferença importa para saber **quando** algo acontece e **quem** decide que acontece:
+As 70 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comum. Vale separar esse vocabulário em dois tipos, porque a diferença importa para saber **quando** algo acontece e **quem** decide que acontece:
 
 * **Ação do Jogador** — o feiticeiro da vez escolhe fazer isso, geralmente pagando um custo, numa fase específica do turno.
 * **Gatilho de Evento** — acontece sozinho, como reação a uma condição do jogo (início de turno, uma carta sendo destruída, um ataque sendo declarado). Ninguém "escolhe" ativar; ele simplesmente dispara quando a condição é satisfeita.

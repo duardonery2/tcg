@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Efeitos de carta: implementa `Efeito / Habilidade` das 60 cartas do CSV
+"""Efeitos de carta: implementa `Efeito / Habilidade` das 70 cartas do CSV
 como composicoes de um punhado de PRIMITIVAS (comprar, descartar, buff,
 dano, destruir, mana, retornar ao Panteão...). Isso e deliberado — a secao
 'Vocabulario de Mecanicas' de GAME_DESIGN.md ja mostrou que quase todo texto
@@ -535,6 +535,47 @@ def _(ctrl, player_id, card, evento=None):
     alvo = combatente_ativo(ctrl, _oponente(ctrl, player_id))
     if alvo is not None and elemento_efetivo(ctrl.world, alvo) is Elemento.TERRA:
         buff(ctrl, card, "pow", 2, Duracao.NESTE_TURNO, "Três Cabeças")
+
+
+# ---- Combatentes de Suporte (GAME_DESIGN.md, "Diretrizes de Design de
+# Combatentes") ------------------------------------------------------------
+#
+# Faixa de POW até 14: baratos, focados em busca de carta e farm de Mana
+# pra abrir caminho pro combatente Poderoso — não em brigar (por isso a
+# Habilidade de cada um é só um dos dois primitivos de sempre, comprar/
+# ganhar_mana, sem nenhum efeito de combate).
+
+@EFFECTS.registrar("Gnomos das Minas")
+def _(ctrl, player_id, card, evento=None):
+    # ganha 2, Custo de Habilidade e 1 -> +1 de Mana liquido por ativacao,
+    # senao a Habilidade so pagaria a si mesma (sem farm de verdade).
+    ganhar_mana(ctrl, player_id, 2)
+
+
+@EFFECTS.registrar("Soldados de Camelot")
+def _(ctrl, player_id, card, evento=None):
+    ganhar_mana(ctrl, player_id, 2)  # mesma logica de Gnomos das Minas acima
+
+
+@EFFECTS.registrar("Zumbis Errantes")
+def _(ctrl, player_id, card, evento=None):
+    ganhar_mana(ctrl, player_id, 3)  # Custo de Habilidade 2 -> +1 liquido
+
+
+@EFFECTS.registrar("Fadas do Bosque")
+def _(ctrl, player_id, card, evento=None):
+    comprar(ctrl, player_id, 1)
+
+
+@EFFECTS.registrar("Sombras Noturnas")
+def _(ctrl, player_id, card, evento=None):
+    comprar(ctrl, player_id, 1)
+
+
+@EFFECTS.registrar("Cultistas do Abismo")
+def _(ctrl, player_id, card, evento=None):
+    comprar(ctrl, player_id, 1)
+    dano_jogador(ctrl, player_id, 1, "Cultistas do Abismo")
 
 
 # ---- Domínios -----------------------------------------------------------
