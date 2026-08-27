@@ -142,7 +142,12 @@ TCG.criarJogo = function criarJogo({ seed = null, nomes = { 1: "Você", 2: "Opon
     ultimoDominioAtivadoPor: null,
     triggers: [],  // ver triggers.js
     passivos: [],  // ver triggers.js
+    // Encantamentos Contínuos (Oásis do Saara, Geleiras do Ártico, Selva
+    // Amazônica) somam aqui via passivo, enquanto ficarem em campo — ver
+    // TCG.MANA_POR_TURNO + este bônus na Fase de Saque, em avancarFase.
+    bonusManaPorTurno: {},
   };
+  for (const pid of jogadores) game.bonusManaPorTurno[pid] = 0;
 
   for (const pid of jogadores) {
     game.players[pid] = { playerId: pid, nome: nomes[pid], mana: TCG.MANA_INICIAL, vida: TCG.VIDA_INICIAL, mao: [] };
@@ -354,8 +359,11 @@ TCG.avancarFase = function avancarFase(game) {
     // ResourceSystem em game/systems.py.
     if (turnoDestaTransicao > game.jogadores.length) {
       const ps = game.players[jogadorDoTurnoQueEntra];
-      ps.mana += TCG.MANA_POR_TURNO;
-      game.bus.emit("manaAlterada", { playerId: jogadorDoTurnoQueEntra, delta: TCG.MANA_POR_TURNO, total: ps.mana });
+      // Encantamentos Contínuos (Oásis do Saara etc.) somam a
+      // bonusManaPorTurno enquanto ficarem em campo — ver webgame/effects.js.
+      const ganho = TCG.MANA_POR_TURNO + (game.bonusManaPorTurno[jogadorDoTurnoQueEntra] || 0);
+      ps.mana += ganho;
+      game.bus.emit("manaAlterada", { playerId: jogadorDoTurnoQueEntra, delta: ganho, total: ps.mana });
     }
     TCG.comprar(game, jogadorDoTurnoQueEntra, 1, "turno");
     if (anterior === "FINAL") game.bus.emit("turnoIniciado", { playerId: jogadorDoTurnoQueEntra, numeroTurno: turnoDestaTransicao });

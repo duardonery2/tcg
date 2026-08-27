@@ -18,6 +18,16 @@ function pagarMana(game, playerId, custo) {
   game.bus.emit("manaAlterada", { playerId, delta: -custo, total: ps.mana });
 }
 
+// "Encantamentos Contínuos" (GAME_DESIGN.md) — em vez de resolver e ir pra
+// Pilha de Descarte como todo Encantamento normal, ficam em campo (num slot
+// de magia, igual Domínio/Maldição) enquanto o efeito passivo de +Mana por
+// turno estiver ativo. Custo de Mana 0 de propósito — o "custo" real é o
+// sacrifício pago no próprio efeito (descarte, vida, POW/RES). Não usa um
+// campo novo no CSV: o tipo continua "Encantamento", só o NOME está nesta
+// lista — mesmo padrão de tabela-por-nome já usado por SONS/regGatilhoMaldicao,
+// sem mexer no schema do CSV/loader. Espelha game/actions.py.
+const ENCANTAMENTOS_CONTINUOS = new Set(["Oásis do Saara", "Geleiras do Ártico", "Selva Amazônica"]);
+
 TCG.acoes = {
   // Fase de Invocação: traz um Combatente do Panteão pro slot de Monstro.
   // `continuar` (opcional): chamada quando a ação (incluindo qualquer
@@ -100,11 +110,19 @@ TCG.acoes = {
       game.bus.emit("dominioAtivado", { playerId, carta, slot: s });
       TCG.executarEfeito(game, carta.nome, playerId, carta);
     } else if (carta.tipo === "Encantamento") {
+      const continuo = ENCANTAMENTOS_CONTINUOS.has(carta.nome);
+      if (continuo && slot === null && TCG.Board.slotsLivres(lado).length === 0) {
+        throw new TCG.AcaoInvalida("Não há slot de magia livre (limite de 5) pra jogar este Encantamento Contínuo.");
+      }
       pagarMana(game, playerId, carta.custoMana);
       ps.mao.splice(ps.mao.indexOf(carta), 1);
       game.bus.emit("encantamentoJogado", { playerId, carta });
       TCG.executarEfeito(game, carta.nome, playerId, carta);
-      game.descarte[playerId].push(carta);
+      if (continuo) {
+        TCG.Board.colocarMagia(lado, carta, slot);
+      } else {
+        game.descarte[playerId].push(carta);
+      }
     } else if (carta.tipo === "Maldição") {
       // mesmo cuidado do Domínio: checa slot livre ANTES de tirar da mão
       // (setar é grátis, mas a carta não pode simplesmente sumir).

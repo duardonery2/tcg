@@ -59,7 +59,7 @@ Os atributos base dos Heróis e Monstros possuem um limite natural de 20 pontos,
 
 ## Diretrizes de Design de Combatentes (notas de design para cartas futuras)
 
-Esta seção registra a filosofia de curva de poder e a taxonomia pretendidas para o Panteão. São diretrizes pra orientar a criação de novos Heróis/Monstros — não uma regra que o motor aplica automaticamente sobre as 61 cartas já existentes.
+Esta seção registra a filosofia de curva de poder e a taxonomia pretendidas para o Panteão. São diretrizes pra orientar a criação de novos Heróis/Monstros — não uma regra que o motor já aplica sobre os 20 Heróis/Monstros existentes.
 
 **Curva de poder — farm antes do finalizador:** a partida deve começar com combatentes fracos, usados pra gerar Mana e comprar cartas ("farm"), abrindo caminho pra invocar combatentes poderosos mais à frente. Um combatente poderoso não deve ser invocável no primeiro turno — na prática, isso significa dar a ele um Custo de Mana alto o bastante pra nunca caber nos 5 de Mana inicial (ver "Preparação e Baralhos").
 
@@ -83,7 +83,7 @@ Esta seção registra a filosofia de curva de poder e a taxonomia pretendidas pa
 
 ## Vocabulário de Mecânicas: Ações do Jogador vs. Gatilhos de Evento
 
-As 61 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comum. Vale separar esse vocabulário em dois tipos, porque a diferença importa para saber **quando** algo acontece e **quem** decide que acontece:
+As 64 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comum. Vale separar esse vocabulário em dois tipos, porque a diferença importa para saber **quando** algo acontece e **quem** decide que acontece:
 
 * **Ação do Jogador** — o feiticeiro da vez escolhe fazer isso, geralmente pagando um custo, numa fase específica do turno.
 * **Gatilho de Evento** — acontece sozinho, como reação a uma condição do jogo (início de turno, uma carta sendo destruída, um ataque sendo declarado). Ninguém "escolhe" ativar; ele simplesmente dispara quando a condição é satisfeita.
@@ -108,11 +108,14 @@ As 61 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comu
 | Ativar a Habilidade de um Combatente ("Habilidade de Mana") | Fase Principal ou de Batalha, 1x/turno | Custo de Habilidade (losango) | Rei Arthur, Surtur, ... |
 | Ativar um Domínio | Fase Principal | Custo de Mana da carta (destrói o Domínio anterior) | Vulcão Primordial, Valhalla |
 | Jogar um Encantamento | Fase Principal | Custo de Mana da carta | Tomo do Oráculo, Pacto de Sangue |
+| Jogar um Encantamento Contínuo | Fase Principal | Nenhuma Mana — um sacrifício próprio, no lugar (ver abaixo) | Oásis do Saara, Geleiras do Ártico, Selva Amazônica |
 | Baixar uma Maldição virada para baixo | Fase Principal | Nenhum (grátis) | qualquer Maldição |
 | Revelar/ativar uma Maldição já setada | A qualquer momento no turno do oponente | Custo de Mana da carta | qualquer Maldição |
 | Declarar um ataque | Fase de Batalha, 1x/turno por combatente, nunca no 1º turno da partida | — | — |
 
 > **Maldição: o custo é pago na ativação, não ao baixar.** Setar uma Maldição virada para baixo é grátis — ela só cobra o Custo de Mana impresso na carta no momento em que é revelada/ativada. Isso significa que dá pra baixar uma Maldição mesmo sem mana nenhuma, mas se não houver mana disponível quando chegar a hora de ativá-la, a ativação falha (a carta continua virada para baixo em campo até haver mana ou até ser destruída por outro efeito).
+
+> **Encantamento Contínuo:** ao contrário de um Encantamento normal (resolve na hora e vai pra Pilha de Descarte), fica em campo — num slot de magia, disputando o mesmo limite de 5 com Domínio/Maldição. Tem Custo de Mana **0**: o preço de entrada é um sacrifício pago na hora de jogar (descartar carta, perder Pontos de Vida, ou reduzir permanentemente o POW/RES do próprio combatente em campo — varia por carta), e o benefício é um bônus de **Mana por turno** enquanto continuar em campo (some se a carta for destruída). Vários podem estar ativos ao mesmo tempo, e os bônus se somam.
 
 > **Nota de consistência:** quatro cartas já citavam "Habilidade de Mana" como um termo do jogo antes de existir uma regra formal para ela — **Templo de Atlântida** (dispara quando um combatente de Água usa uma), **Minotauro** e **Roubo de Essência** (impedem/roubam o uso de uma) e **Amnésia Mágica** (faz uma falhar). A regra da seção "Habilidades dos Combatentes" acima (Custo de Habilidade, losango cinza) formaliza exatamente esse termo: "usar uma Habilidade de Mana" = ativar a habilidade impressa de um combatente pagando seu Custo de Habilidade.
 

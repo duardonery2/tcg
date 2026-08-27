@@ -670,5 +670,38 @@ const CARTAS = [
     "combate": null,
     "efeito": "Escolha o seu Combatente em campo e 1 no Panteão. Se um deles for alvo de um ataque ou de um efeito de carta do oponente, você pode dividir o dano da batalha igualmente entre os dois. (Não implementado.)",
     "custoHabilidade": null
+  },
+  {
+    "nome": "Oásis do Saara",
+    "arquivo": "../cards/Oásis_do_Saara.png",
+    "tipo": "Encantamento",
+    "elemento": null,
+    "custoMana": 0,
+    "resistencia": null,
+    "combate": null,
+    "efeito": "Descarte 1 carta da mão ao jogar. Enquanto em campo, ganha +1 de Mana por turno.",
+    "custoHabilidade": null
+  },
+  {
+    "nome": "Geleiras do Ártico",
+    "arquivo": "../cards/Geleiras_do_Ártico.png",
+    "tipo": "Encantamento",
+    "elemento": null,
+    "custoMana": 0,
+    "resistencia": null,
+    "combate": null,
+    "efeito": "Perca 3 Pontos de Vida ao jogar. Enquanto em campo, ganha +1 de Mana por turno.",
+    "custoHabilidade": null
+  },
+  {
+    "nome": "Selva Amazônica",
+    "arquivo": "../cards/Selva_Amazônica.png",
+    "tipo": "Encantamento",
+    "elemento": null,
+    "custoMana": 0,
+    "resistencia": null,
+    "combate": null,
+    "efeito": "Seu combatente em campo perde 2 de Combate e 2 de Resistência, permanentemente, ao jogar. Enquanto em campo, ganha +2 de Mana por turno.",
+    "custoHabilidade": null
   }
 ];

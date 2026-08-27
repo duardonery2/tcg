@@ -31,9 +31,10 @@ class ResourceSystem(System):
     primeira vez). Com N jogadores em rodízio, os primeiros N números de
     turno correspondem exatamente ao primeiro turno de cada um."""
 
-    def __init__(self, bus: EventBus, baralhos: dict[int, Deck], players: dict[int, PlayerState]):
+    def __init__(self, bus: EventBus, baralhos: dict[int, Deck], players: dict[int, PlayerState], ctrl=None):
         self.baralhos = baralhos
         self.players = players
+        self.ctrl = ctrl  # ver Encantamentos Contínuos (game/effects.py) -- bonus_mana_por_turno
         bus.subscribe(PhaseChanged, self._on_phase_changed)
         self.bus = bus
         self._world_ref: World | None = None
@@ -52,8 +53,10 @@ class ResourceSystem(System):
         numero_turno = turn_row[1].numero_turno if turn_row else None
         primeiro_turno_do_jogador = numero_turno is not None and numero_turno <= len(self.players)
         if not primeiro_turno_do_jogador:
-            ps.mana += MANA_POR_TURNO
-            self.bus.publish(ManaChanged(player_id=player_id, delta=MANA_POR_TURNO, total=ps.mana))
+            bonus = getattr(self.ctrl, "bonus_mana_por_turno", {}).get(player_id, 0) if self.ctrl is not None else 0
+            ganho = MANA_POR_TURNO + bonus
+            ps.mana += ganho
+            self.bus.publish(ManaChanged(player_id=player_id, delta=ganho, total=ps.mana))
 
         baralho = self.baralhos[player_id]
         try:

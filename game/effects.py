@@ -1068,6 +1068,73 @@ def _(ctrl, player_id, card, evento=None):
         ctrl.world.add_component(alvo, ImuneAHabilidadesInimigas())
 
 
+# ---- Encantamentos Contínuos (GAME_DESIGN.md) ----------------------------
+#
+# Custo de Mana 0 de propósito — o "custo" real é o sacrifício pago no
+# próprio efeito (descarte, Pontos de Vida, POW/RES). Diferente de um
+# Encantamento normal, ficam em campo (ActionsPlayEnchantmentAction checa
+# `ENCANTAMENTOS_CONTINUOS` pelo NOME, não um campo novo no CSV) enquanto o
+# bônus de +Mana por turno estiver ativo — mesmo padrão de
+# registrar_passivo/limpa-e-reaplica já usado pelos Domínios (Vulcão
+# Primordial, Jardins Suspensos...), só que somando num contador por
+# JOGADOR (ctrl.bonus_mana_por_turno) em vez de um StatusEffect por carta,
+# já que o que essas cartas afetam é a economia de Mana do turno, não POW/RES
+# de um combatente.
+
+@EFFECTS.registrar("Oásis do Saara")
+def _(ctrl, player_id, card, evento=None):
+    from .triggers import registrar_passivo
+
+    descartar_aleatorias(ctrl, player_id, 1)  # sacrifício: descarte 1 carta da mão (se houver)
+
+    def _aplicar(ctrl, player_id, card):
+        ctrl.bonus_mana_por_turno[player_id] = ctrl.bonus_mana_por_turno.get(player_id, 0) + 1
+
+    def _limpar(ctrl, card):
+        ctrl.bonus_mana_por_turno[player_id] = ctrl.bonus_mana_por_turno.get(player_id, 0) - 1
+
+    registrar_passivo(ctrl, player_id, card, _aplicar, _limpar)
+    _aplicar(ctrl, player_id, card)
+
+
+@EFFECTS.registrar("Geleiras do Ártico")
+def _(ctrl, player_id, card, evento=None):
+    from .triggers import registrar_passivo
+
+    dano_jogador(ctrl, player_id, 3, "Geleiras do Ártico")  # sacrifício: 3 de vida do próprio dono
+
+    def _aplicar(ctrl, player_id, card):
+        ctrl.bonus_mana_por_turno[player_id] = ctrl.bonus_mana_por_turno.get(player_id, 0) + 1
+
+    def _limpar(ctrl, card):
+        ctrl.bonus_mana_por_turno[player_id] = ctrl.bonus_mana_por_turno.get(player_id, 0) - 1
+
+    registrar_passivo(ctrl, player_id, card, _aplicar, _limpar)
+    _aplicar(ctrl, player_id, card)
+
+
+@EFFECTS.registrar("Selva Amazônica")
+def _(ctrl, player_id, card, evento=None):
+    from .triggers import registrar_passivo
+
+    # sacrifício: o próprio combatente em campo perde 2/2 permanentemente
+    # (se não houver combatente, o sacrifício simplesmente não se aplica —
+    # mesma leniência de Pacto de Sangue).
+    alvo = combatente_ativo(ctrl, player_id)
+    if alvo is not None:
+        buff(ctrl, alvo, "pow", -2, Duracao.PERMANENTE, "Selva Amazônica")
+        buff(ctrl, alvo, "res", -2, Duracao.PERMANENTE, "Selva Amazônica")
+
+    def _aplicar(ctrl, player_id, card):
+        ctrl.bonus_mana_por_turno[player_id] = ctrl.bonus_mana_por_turno.get(player_id, 0) + 2
+
+    def _limpar(ctrl, card):
+        ctrl.bonus_mana_por_turno[player_id] = ctrl.bonus_mana_por_turno.get(player_id, 0) - 2
+
+    registrar_passivo(ctrl, player_id, card, _aplicar, _limpar)
+    _aplicar(ctrl, player_id, card)
+
+
 # ---- Maldições -----------------------------------------------------------
 #
 # GAME_DESIGN.md: "Revelar/ativar uma Maldição já setada: a qualquer momento

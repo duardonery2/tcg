@@ -169,12 +169,25 @@ class ActivateDomainAction:
         ctrl.effects.executar(ctrl, info.nome, self.player_id, self.card)
 
 
+# "Encantamentos Contínuos" (GAME_DESIGN.md) — em vez de resolver e ir pra
+# Pilha de Descarte como todo Encantamento normal, ficam em campo (num slot
+# de magia, igual Domínio/Maldição) enquanto o efeito passivo de +Mana por
+# turno estiver ativo. Custo de Mana 0 de propósito — o "custo" real é o
+# sacrifício pago no próprio efeito (descarte, vida, POW/RES). Não usa um
+# campo novo no CSV: o tipo continua "Encantamento", só o NOME está nesta
+# lista — mesmo padrão de tabela-por-nome já usado por
+# EFFECTS/registrar_gatilho_maldicao, sem mexer no schema do CSV/loader.
+ENCANTAMENTOS_CONTINUOS = {"Oásis do Saara", "Geleiras do Ártico", "Selva Amazônica"}
+
+
 @dataclass
 class PlayEnchantmentAction:
     """Fase Tatica: joga um Encantamento da mao. Resolve na hora e vai pra
-    Pilha de Descarte (nenhum dos Encantamentos do baralho e persistente)."""
+    Pilha de Descarte — exceto os "Contínuos" (ENCANTAMENTOS_CONTINUOS), que
+    ficam em campo num slot de magia em vez de serem descartados."""
     player_id: int
     card: int
+    slot: int | None = None
 
     def executar(self, ctrl) -> None:
         _exigir_fase(ctrl, self.player_id, Fase.PRINCIPAL)
@@ -182,16 +195,26 @@ class PlayEnchantmentAction:
         if self.card not in ps.mao:
             raise AcaoInvalida("Essa carta nao esta na mao desse jogador.")
 
+        info = ctrl.world.get_component(self.card, CardInfo)
+        continuo = info.nome in ENCANTAMENTOS_CONTINUOS
+        lado = ctrl.board.lado(self.player_id)
+        if continuo and self.slot is None and not lado.slots_livres():
+            raise AcaoInvalida("Não há slot de magia livre (limite de 5) pra jogar este Encantamento Contínuo.")
+
         custo = ctrl.world.get_component(self.card, ManaCost).valor
         _pagar_mana(ctrl, self.player_id, custo)
         ps.mao.remove(self.card)
 
         ctrl.bus.publish(EnchantmentPlayed(player_id=self.player_id, card=self.card))
-        info = ctrl.world.get_component(self.card, CardInfo)
         ctrl.effects.executar(ctrl, info.nome, self.player_id, self.card)
 
         loc = ctrl.world.get_component(self.card, Location)
-        loc.zona = Zona.PILHA_DESCARTE
+        if continuo:
+            slot = lado.colocar_magia(self.card, self.slot)
+            loc.zona = Zona.CAMPO_MAGIA
+            loc.slot = slot
+        else:
+            loc.zona = Zona.PILHA_DESCARTE
 
 
 @dataclass

@@ -750,6 +750,48 @@ reg("Manto da Natureza", (game, playerId) => {
   alvo.imuneAHabilidadesInimigas = true;
 });
 
+// ---- Encantamentos Contínuos (GAME_DESIGN.md) ----------------------------
+//
+// Custo de Mana 0 de propósito — o "custo" real é o sacrifício pago no
+// próprio efeito (descarte, vida, POW/RES). Diferente de um Encantamento
+// normal, ficam em campo (TCG.acoes.jogarCartaDeCampo checa
+// ENCANTAMENTOS_CONTINUOS pelo NOME, em actions.js) enquanto o bônus de
+// +Mana por turno estiver ativo — mesmo padrão de
+// registrarPassivo/limpa-e-reaplica já usado pelos Domínios (Vulcão
+// Primordial, Jardins Suspensos...), só que somando num contador por
+// JOGADOR (game.bonusManaPorTurno) em vez de um statusEffect por carta.
+
+reg("Oásis do Saara", (game, playerId, carta) => {
+  TCG.descartarAleatorias(game, playerId, 1); // sacrifício: descarte 1 carta da mão (se houver)
+  const aplicar = () => { game.bonusManaPorTurno[playerId] = (game.bonusManaPorTurno[playerId] || 0) + 1; };
+  const limpar = () => { game.bonusManaPorTurno[playerId] = (game.bonusManaPorTurno[playerId] || 0) - 1; };
+  TCG.registrarPassivo(game, playerId, carta, aplicar, limpar);
+  aplicar();
+});
+
+reg("Geleiras do Ártico", (game, playerId, carta) => {
+  TCG.danoJogador(game, playerId, 3, "Geleiras do Ártico"); // sacrifício: 3 de vida do próprio dono
+  const aplicar = () => { game.bonusManaPorTurno[playerId] = (game.bonusManaPorTurno[playerId] || 0) + 1; };
+  const limpar = () => { game.bonusManaPorTurno[playerId] = (game.bonusManaPorTurno[playerId] || 0) - 1; };
+  TCG.registrarPassivo(game, playerId, carta, aplicar, limpar);
+  aplicar();
+});
+
+reg("Selva Amazônica", (game, playerId, carta) => {
+  // sacrifício: o próprio combatente em campo perde 2/2 permanentemente
+  // (se não houver combatente, o sacrifício simplesmente não se aplica —
+  // mesma leniência de Pacto de Sangue).
+  const alvo = TCG.combatenteAtivo(game, playerId);
+  if (alvo) {
+    TCG.buff(game, alvo, "pow", -2, "PERMANENTE", "Selva Amazônica");
+    TCG.buff(game, alvo, "res", -2, "PERMANENTE", "Selva Amazônica");
+  }
+  const aplicar = () => { game.bonusManaPorTurno[playerId] = (game.bonusManaPorTurno[playerId] || 0) + 2; };
+  const limpar = () => { game.bonusManaPorTurno[playerId] = (game.bonusManaPorTurno[playerId] || 0) - 2; };
+  TCG.registrarPassivo(game, playerId, carta, aplicar, limpar);
+  aplicar();
+});
+
 // ---- Maldições -----------------------------------------------------------
 //
 // GAME_DESIGN.md: "Revelar/ativar uma Maldição já setada: a qualquer momento

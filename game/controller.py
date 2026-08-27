@@ -47,6 +47,10 @@ class GameController:
         self._owner_map: dict[int, int] = {}
         self.triggers: list = []  # ver triggers.py
         self.passivos: list = []  # ver triggers.py
+        # Encantamentos Contínuos (Oásis do Saara, Geleiras do Ártico, Selva
+        # Amazônica) somam aqui via passivo, enquanto ficarem em campo — ver
+        # ResourceSystem.MANA_POR_TURNO + este bônus na Fase de Saque.
+        self.bonus_mana_por_turno: dict[int, int] = {pid: 0 for pid in jogadores}
 
         for pid in self.jogadores:
             panteao_ids, baralho_ids = carregar_csv_para_jogador(
@@ -61,7 +65,7 @@ class GameController:
 
         self.fase_system = PhaseSystem(self.bus, self.jogadores)
         self.upkeep_system = UpkeepSystem(self.bus)
-        self.resource_system = ResourceSystem(self.bus, self.baralhos, self.players)
+        self.resource_system = ResourceSystem(self.bus, self.baralhos, self.players, self)
         self.destruction_system = DestructionSystem(self.bus, self.board, self.dono_da_carta, self)
         self.combat_system = CombatSystem(self.bus, self.players, self.destruction_system, self)
 
