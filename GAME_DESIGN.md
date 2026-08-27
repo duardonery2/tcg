@@ -57,9 +57,33 @@ Os atributos base dos Heróis e Monstros possuem um limite natural de 20 pontos,
 
 ---
 
+## Diretrizes de Design de Combatentes (notas de design para cartas futuras)
+
+Esta seção registra a filosofia de curva de poder e a taxonomia pretendidas para o Panteão. São diretrizes pra orientar a criação de novos Heróis/Monstros — não uma regra que o motor aplica automaticamente sobre as 61 cartas já existentes.
+
+**Curva de poder — farm antes do finalizador:** a partida deve começar com combatentes fracos, usados pra gerar Mana e comprar cartas ("farm"), abrindo caminho pra invocar combatentes poderosos mais à frente. Um combatente poderoso não deve ser invocável no primeiro turno — na prática, isso significa dar a ele um Custo de Mana alto o bastante pra nunca caber nos 5 de Mana inicial (ver "Preparação e Baralhos").
+
+**Papéis por faixa de Combate (POW):**
+
+| Faixa de POW | Papel | Descrição |
+|---|---|---|
+| **até 10** | Suporte | Combatente barato focado em busca de carta e farm de Mana, não em brigar. |
+| **11–16** | Intermediário | Eficiente em Mana, se sustenta sozinho em campo, e prepara o caminho pro combatente poderoso seguinte. Tipicamente tem Resistência alta e um efeito complementar (não um finalizador). |
+| **17–20** | Poderoso | O finalizador do Panteão — nunca deve ser invocável no primeiro turno (ver acima). |
+
+**Função (nova taxonomia, além de Herói/Monstro):** cada combatente também tem uma Função — uma subcategoria dentro de Herói/Monstro: **Guerreiro, Arqueiro, Mago, Dragão, Primordial, Deus, Demônio, Espírito**.
+
+**Efeito primário e secundário:** um combatente pode ter dois efeitos em vez de um — um primário e um secundário. Quando a carta tem os dois, ambos são impressos em fonte reduzida, pra caber os dois no mesmo espaço da carta.
+
+**Elemento:** a lista de Naturezas Elementais de combatente passa a incluir **Neutro**, além de Fogo, Água, Terra e Vento — um combatente Neutro não tem vantagem nem desvantagem elemental contra nenhuma Natureza (ver "Combate e Sistema Elemental" acima).
+
+> Nada disso está implementado no motor ainda (nem no CSV, nem em `game/`/`webgame/`) — é a especificação pra quando novas cartas seguindo essas diretrizes forem adicionadas.
+
+---
+
 ## Vocabulário de Mecânicas: Ações do Jogador vs. Gatilhos de Evento
 
-As 60 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comum. Vale separar esse vocabulário em dois tipos, porque a diferença importa para saber **quando** algo acontece e **quem** decide que acontece:
+As 61 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comum. Vale separar esse vocabulário em dois tipos, porque a diferença importa para saber **quando** algo acontece e **quem** decide que acontece:
 
 * **Ação do Jogador** — o feiticeiro da vez escolhe fazer isso, geralmente pagando um custo, numa fase específica do turno.
 * **Gatilho de Evento** — acontece sozinho, como reação a uma condição do jogo (início de turno, uma carta sendo destruída, um ataque sendo declarado). Ninguém "escolhe" ativar; ele simplesmente dispara quando a condição é satisfeita.
