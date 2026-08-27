@@ -104,7 +104,8 @@ As 70 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comu
 
 | Ação | Quando | Custo | Exemplo de carta |
 |---|---|---|---|
-| Invocar um Combatente | Fase de Invocação | Custo de Mana da carta | qualquer Herói/Monstro |
+| Invocar um Combatente | Fase de Invocação, só com o slot vazio | Custo de Mana da carta | qualquer Herói/Monstro |
+| Trocar de Combatente (invocar do Panteão substituindo o ativo) | Fase Principal, qualquer número de vezes (limitado pela Mana) | Custo de Mana da carta — e DESTRÓI o combatente já em campo, se houver | qualquer Herói/Monstro |
 | Ativar a Habilidade de um Combatente ("Habilidade de Mana") | Fase Principal ou de Batalha, 1x/turno | Custo de Habilidade (losango) | Rei Arthur, Surtur, ... |
 | Ativar um Domínio | Fase Principal | Custo de Mana da carta (destrói o Domínio anterior) | Vulcão Primordial, Valhalla |
 | Jogar um Encantamento (Tipo de Encantamento: Simples) | Fase Principal | Custo de Mana da carta | Tomo do Oráculo, Pacto de Sangue |
@@ -114,6 +115,8 @@ As 70 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comu
 | Revelar/ativar uma Maldição já setada | A qualquer momento no turno do oponente | Custo de Mana da carta | qualquer Maldição |
 | Declarar um ataque | Fase de Batalha, 1x/turno por combatente, nunca no 1º turno da partida | — | — |
 
+> **Trocar de Combatente destrói, não devolve ao Panteão.** É uma segunda porta de entrada pro Panteão, além da Invocação normal (Fase de Invocação, só serve com o slot vazio) — na Fase Principal, o jogador pode abrir o Panteão e invocar outro Combatente pagando o Custo de Mana normal da carta, mesmo já havendo um ativo em campo. Nesse caso o combatente anterior é DESTRUÍDO (vai pra Pilha de Descarte e dispara qualquer gatilho "ao ser destruído" — Cu Chulainn, Trono de Camelot, etc.), não devolvido ao Panteão como Cânion dos Ventos faz. Sem limite de vezes por turno além da própria Mana disponível.
+>
 > **Maldição: o custo é pago na ativação, não ao baixar.** Setar uma Maldição virada para baixo é grátis — ela só cobra o Custo de Mana impresso na carta no momento em que é revelada/ativada. Isso significa que dá pra baixar uma Maldição mesmo sem mana nenhuma, mas se não houver mana disponível quando chegar a hora de ativá-la, a ativação falha (a carta continua virada para baixo em campo até haver mana ou até ser destruída por outro efeito).
 
 > **Tipo de Encantamento:** toda carta Tipo=Encantamento agora carrega uma subcategoria própria (coluna "Tipo de Encantamento" no CSV) com 3 valores possíveis:

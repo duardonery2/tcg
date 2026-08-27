@@ -19,6 +19,7 @@ import pygame
 from .actions import (
     AcaoInvalida, ActivateAbilityAction, ActivateDomainAction,
     DeclareAttackAction, PlayEnchantmentAction, SetCurseAction, SummonAction,
+    SwapCombatantAction,
 )
 from .components import AbilityCost, CardInfo, Fase, Tipo
 from .controller import GameController
@@ -215,6 +216,13 @@ class GameGUI:
                 return
 
         if ts.fase is Fase.PRINCIPAL:
+            # abre o Panteão pra trocar o combatente ativo (destruindo-o) —
+            # ao contrário da Invocação (só serve com o slot vazio), aqui
+            # funciona mesmo com um combatente já em campo.
+            for rect, card in self._rects_panteao():
+                if rect.collidepoint(pos):
+                    self._tentar(SwapCombatantAction(player_id=jogador, card=card))
+                    return
             for rect, card in self._rects_mao():
                 if rect.collidepoint(pos):
                     self._jogar_da_mao(jogador, card)
@@ -281,11 +289,15 @@ class GameGUI:
         self._desenhar_lado(oponente, y_base=150, mao_visivel=False)
         self._desenhar_lado(self.jogador_local, y_base=self._y_base_local(), mao_visivel=True)
 
-        # Panteão do jogador local (INVOCACAO)
-        if ts.fase is Fase.INVOCACAO and ts.jogador_da_vez == self.jogador_local:
+        # Panteão do jogador local: sempre clicável na INVOCACAO (só com o
+        # slot vazio), e também na PRINCIPAL pra trocar o combatente ativo
+        # (SwapCombatantAction — destrói o que já estiver em campo).
+        if ts.jogador_da_vez == self.jogador_local and ts.fase in (Fase.INVOCACAO, Fase.PRINCIPAL):
             for rect, card in self._rects_panteao():
                 self._blit_carta(ctrl.nome_da_carta(card), rect, destacar=True)
-            self._texto("Panteão — clique para invocar", (20, ALTURA // 2 - CARTA_H // 2 - 22))
+            rotulo = ("Panteão — clique para invocar" if ts.fase is Fase.INVOCACAO
+                      else "Panteão — clique para trocar (destrói o combatente em campo)")
+            self._texto(rotulo, (20, ALTURA // 2 - CARTA_H // 2 - 22))
 
         # botoes
         self._botao(self._rect_botao_avancar(), "Próxima Fase")

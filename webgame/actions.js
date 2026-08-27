@@ -44,6 +44,44 @@ TCG.acoes = {
     TCG.ofertarMaldicoesReativas(game, { tipo: "combatenteInvocado", playerId, carta }, continuar);
   },
 
+  // Fase Principal: abre o Panteão e invoca um Combatente de lá, pagando o
+  // Custo de Mana normal — MESMO com um combatente já ativo em campo, caso
+  // em que ele é DESTRUÍDO antes (não devolvido ao Panteão: vai pro
+  // descarte e dispara qualquer gatilho "ao ser destruído", igual a
+  // qualquer outra destruição). Complementa `invocar` (só serve com o slot
+  // vazio, na Fase de Invocação), dando a opção de trocar de combatente no
+  // meio do turno pagando o preço de destruir o que já tinha — não há
+  // limite de vezes por turno além da Mana disponível.
+  trocarCombatente(game, playerId, carta, continuar = () => {}) {
+    exigirFase(game, playerId, ["PRINCIPAL"]);
+    if (!TCG.Deck.restantes(game.panteoes[playerId]).includes(carta)) {
+      throw new TCG.AcaoInvalida("Essa carta não está no Panteão desse jogador.");
+    }
+    pagarMana(game, playerId, carta.custoMana);
+
+    const lado = game.board[playerId];
+    const anterior = lado.monstro;
+    if (anterior !== null) {
+      TCG.destroyCard(game, anterior, "substituído por invocação na Fase Principal");
+    }
+
+    // destruir o combatente anterior pode disparar gatilhos de terceiros
+    // (ex.: Caixa de Pandora força um descarte aleatório) que, em tese,
+    // poderiam tirar justo ESTA carta do Panteão antes dela ser invocada —
+    // confere de novo em vez de deixar tirarEspecifica estourar.
+    if (!TCG.Deck.restantes(game.panteoes[playerId]).includes(carta)) {
+      throw new TCG.AcaoInvalida("Essa carta saiu do Panteão por um efeito antes de poder ser invocada.");
+    }
+    TCG.Deck.tirarEspecifica(game.panteoes[playerId], carta);
+    // mesmo reset de flags de turno de `invocar` acima.
+    carta.atacouNesteTurno = false;
+    carta.habilidadeUsadaNesteTurno = false;
+    TCG.Board.colocarMonstro(lado, carta);
+    game.bus.emit("combatenteInvocado", { playerId, carta });
+    TCG.checarFimDeJogo(game);
+    TCG.ofertarMaldicoesReativas(game, { tipo: "combatenteInvocado", playerId, carta }, continuar);
+  },
+
   // Fase Principal ou de Batalha, 1x por turno: paga o Custo de Habilidade e
   // dispara o efeito da carta. A decisão de Maldição reativa (ex.: Roubo de
   // Essência) acontece ANTES do efeito da própria Habilidade resolver.

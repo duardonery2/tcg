@@ -137,8 +137,10 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
 
   // ---- Baralho / Panteão / Pilha de Descarte: renderizados como um slot
   // virado pra baixo (igual a uma Maldição setada) com o número de cartas
-  // centralizado por cima. Só o Descarte é clicável — é informação pública
-  // e abre num modal de leitura; Baralho/Panteão são só a contagem.
+  // centralizado por cima. Descarte é sempre clicável — é informação
+  // pública e abre num modal de leitura; Baralho nunca é. O Panteão é
+  // clicável só pro jogador LOCAL, na própria Fase Principal (ver
+  // abrirPanteaoParaTrocar abaixo) — TCG.acoes.trocarCombatente.
 
   function elPilha(rotulo, quantidade, onClick, chave = "") {
     const wrap = document.createElement("div");
@@ -176,6 +178,25 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
       grid.appendChild(img);
     }
     el("overlay-descarte").classList.add("ativo");
+  }
+
+  // Fase Principal: abre o Panteão sob demanda (ao contrário da escolha de
+  // Invocação, que é forçada — ver solicitarInvocacao abaixo) pra trocar o
+  // combatente ativo, destruindo-o (TCG.acoes.trocarCombatente). Cancelável
+  // (min 0) e sem avançar de fase sozinho — o jogador pode continuar
+  // jogando Encantamentos/Domínios/Maldições na mesma Fase Principal
+  // depois, igual a qualquer outra ação dela.
+  function abrirPanteaoParaTrocar(playerId) {
+    const opcoes = TCG.Deck.restantes(game.panteoes[playerId]);
+    if (!opcoes.length) return;
+    game.selection.solicitar(
+      playerId, "Escolha um Combatente do Panteão para invocar (destrói o combatente ativo em campo)", opcoes,
+      (escolha) => {
+        if (!escolha.length) return; // cancelou
+        tentar(() => acoes.trocarCombatente(game, playerId, escolha[0]));
+      },
+      0, 1
+    );
   }
 
   // ---- render dos tabuleiros -----------------------------------------
@@ -274,7 +295,12 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
     const pilhaDireita = document.createElement("div");
     pilhaDireita.className = "pilhas-laterais";
     pilhaDireita.appendChild(elPilha("Baralho", TCG.Deck.restantes(game.baralhos[playerId]).length, null, "baralho"));
-    pilhaDireita.appendChild(elPilha("Panteão", TCG.Deck.restantes(game.panteoes[playerId]).length, null, "panteao"));
+    const podeTrocarCombatente = ehLocal && game.jogadorDaVez === playerId && game.fase === "PRINCIPAL";
+    pilhaDireita.appendChild(elPilha(
+      "Panteão", TCG.Deck.restantes(game.panteoes[playerId]).length,
+      podeTrocarCombatente ? () => abrirPanteaoParaTrocar(playerId) : null,
+      "panteao",
+    ));
 
     container.appendChild(pilhaEsquerda);
     container.appendChild(centro);

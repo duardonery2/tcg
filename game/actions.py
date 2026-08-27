@@ -87,6 +87,65 @@ class SummonAction:
 
 
 @dataclass
+class SwapCombatantAction:
+    """Fase Principal: abre o Panteão e invoca um Combatente de lá, pagando
+    o Custo de Mana normal — MESMO com um combatente já ativo em campo,
+    caso em que ele é DESTRUÍDO antes (não devolvido ao Panteão: vai pra
+    Pilha de Descarte e dispara qualquer gatilho "ao ser destruído", igual
+    a qualquer outra destruição). Complementa a Invocação normal (Fase de
+    Invocação, só serve com o slot vazio), dando ao jogador a opção de
+    trocar de combatente no meio do turno pagando o preço de destruir o
+    que já tinha — não há limite de vezes por turno além da Mana
+    disponível."""
+    player_id: int
+    card: int
+
+    def executar(self, ctrl) -> None:
+        _exigir_fase(ctrl, self.player_id, Fase.PRINCIPAL)
+        panteao = ctrl.panteoes[self.player_id]
+        if self.card not in panteao.restantes():
+            raise AcaoInvalida("Essa carta nao esta no Panteao desse jogador.")
+
+        custo = ctrl.world.get_component(self.card, ManaCost).valor
+        _pagar_mana(ctrl, self.player_id, custo)
+
+        lado = ctrl.board.lado(self.player_id)
+        anterior = lado.monstro
+        if anterior is not None:
+            ctrl.destruction_system.destruir(
+                ctrl.world, anterior, motivo="substituído por invocação na Fase Principal")
+
+        # destruir o combatente anterior pode disparar gatilhos de terceiros
+        # (ex.: Caixa de Pandora força um descarte aleatório) que, em tese,
+        # poderiam tirar justo ESTA carta do Panteão antes dela ser invocada
+        # — confere de novo em vez de deixar tirar_especifica estourar.
+        if self.card not in panteao.restantes():
+            raise AcaoInvalida("Essa carta saiu do Panteão por um efeito antes de poder ser invocada.")
+        panteao.tirar_especifica(self.card)
+        # mesmo reset de flags de turno da Invocação normal (ver SummonAction
+        # acima) — sem isso, um combatente que já usou a Habilidade ou já
+        # atacou noutra passagem pelo campo neste turno (Cânion dos Ventos)
+        # ficaria travado ao voltar.
+        ability = ctrl.world.get_component(self.card, AbilityCost)
+        if ability is not None:
+            ability.usada_neste_turno = False
+        if ctrl.world.has_component(self.card, AttackedThisTurn):
+            ctrl.world.remove_component(self.card, AttackedThisTurn)
+        lado.colocar_monstro(self.card)
+        loc = ctrl.world.get_component(self.card, Location)
+        if loc:
+            loc.zona = Zona.CAMPO_MONSTRO
+        else:
+            ctrl.world.add_component(self.card, Location(zona=Zona.CAMPO_MONSTRO))
+
+        evento = CombatantSummoned(player_id=self.player_id, card=self.card)
+        ctrl.bus.publish(evento)
+
+        from .curses import ofertar_maldicoes_reativas
+        ofertar_maldicoes_reativas(ctrl, evento)
+
+
+@dataclass
 class ActivateAbilityAction:
     """Fase Tatica ou de Combate, 1x por turno: paga o Custo de Habilidade
     (losango) e dispara o efeito da carta (game/effects.py)."""
