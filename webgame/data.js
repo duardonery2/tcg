@@ -8,7 +8,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": 16,
     "combate": 18,
-    "efeito": "Excalibur: Ganha +4 de Combate neste turno.",
+    "efeito": "Habilidade (uma vez por turno) — Excalibur: ganha +4 de Combate neste turno.",
     "custoHabilidade": 1
   },
   {
@@ -19,7 +19,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": 18,
     "combate": 16,
-    "efeito": "Vigor: Recupera 4 pontos de Resistência.",
+    "efeito": "Habilidade (uma vez por turno) — Vigor: recupera 4 pontos de Resistência (sem passar do valor impresso na carta).",
     "custoHabilidade": 1
   },
   {
@@ -30,7 +30,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": 14,
     "combate": 14,
-    "efeito": "Astúcia: Anula a próxima Maldição do oponente.",
+    "efeito": "Habilidade (uma vez por turno) — Astúcia: a próxima Maldição que o oponente ativar contra você é anulada.",
     "custoHabilidade": 2
   },
   {
@@ -41,7 +41,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": 15,
     "combate": 17,
-    "efeito": "Matador de Feras: Dano em dobro contra Monstros.",
+    "efeito": "Habilidade (uma vez por turno) — Matador de Feras: prepara um bônus que, se você atacar um Monstro antes do fim deste turno, dobra o dano desse ataque.",
     "custoHabilidade": 2
   },
   {
@@ -52,7 +52,7 @@ const CARTAS = [
     "custoMana": 4,
     "resistencia": 17,
     "combate": 12,
-    "efeito": "Milagre: Cura totalmente um aliado em campo.",
+    "efeito": "Habilidade (uma vez por turno) — Milagre: cura totalmente o seu combatente em campo (sem passar do valor impresso na carta).",
     "custoHabilidade": 3
   },
   {
@@ -63,7 +63,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": 19,
     "combate": 15,
-    "efeito": "Tesouro: Compre 1 carta de Equipamento do baralho.",
+    "efeito": "Habilidade (uma vez por turno) — Tesouro: compre 1 carta do Baralho Arcano.",
     "custoHabilidade": 1
   },
   {
@@ -74,7 +74,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": 15,
     "combate": 19,
-    "efeito": "Rapidez: Ataca duas vezes, mas o dano é reduzido à metade.",
+    "efeito": "Habilidade (uma vez por turno) — Rapidez: ataca duas vezes o combatente ativo do oponente (ou o feiticeiro, se não houver), cada ataque com o dano final reduzido à metade. Conta como o seu ataque do turno.",
     "custoHabilidade": 2
   },
   {
@@ -85,7 +85,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": 12,
     "combate": 16,
-    "efeito": "Flecha Veloz: Causa 5 de dano direto, ignorando combate.",
+    "efeito": "Habilidade (uma vez por turno) — Flecha Veloz: causa 5 de dano direto aos Pontos de Vida do feiticeiro oponente, ignorando combate.",
     "custoHabilidade": 2
   },
   {
@@ -96,7 +96,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": 16,
     "combate": 17,
-    "efeito": "Fúria Final: Se for derrotado no ataque, o alvo também é.",
+    "efeito": "Habilidade (uma vez por turno) — Fúria Final: até o fim deste turno, se este combatente for derrotado atacando (por reflexo de dano), o combatente ativo do oponente também é destruído.",
     "custoHabilidade": 1
   },
   {
@@ -107,7 +107,7 @@ const CARTAS = [
     "custoMana": 1,
     "resistencia": 10,
     "combate": 10,
-    "efeito": "Clarividência: Olhe as 3 cartas do topo do Baralho Arcano.",
+    "efeito": "Habilidade (uma vez por turno) — Clarividência: olhe as 3 cartas do topo do seu Baralho Arcano, sem alterar a ordem.",
     "custoHabilidade": 1
   },
   {
@@ -118,7 +118,7 @@ const CARTAS = [
     "custoMana": 4,
     "resistencia": 20,
     "combate": 16,
-    "efeito": "Loucura: Oponente deve descartar 2 cartas da mão.",
+    "efeito": "Habilidade (uma vez por turno) — Loucura: o oponente descarta 2 cartas aleatórias da mão.",
     "custoHabilidade": 2
   },
   {
@@ -129,7 +129,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": 18,
     "combate": 19,
-    "efeito": "Devorar: Destrói a carta de Domínio ativa no campo.",
+    "efeito": "Habilidade (uma vez por turno) — Devorar: destrói a carta de Domínio ativa no campo, seja de quem for.",
     "custoHabilidade": 2
   },
   {
@@ -140,7 +140,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": 19,
     "combate": 15,
-    "efeito": "Veneno: Causa 3 de dano por turno ao alvo atingido.",
+    "efeito": "Habilidade (uma vez por turno) — Veneno: causa 3 de dano ao combatente ativo do oponente agora, e mais 3 de dano no início de cada turno do dono dele, até esse combatente ser destruído.",
     "custoHabilidade": 2
   },
   {
@@ -151,7 +151,7 @@ const CARTAS = [
     "custoMana": 4,
     "resistencia": 17,
     "combate": 18,
-    "efeito": "Tempestade: Retorna 1 combatente inimigo para o Panteão.",
+    "efeito": "Habilidade (uma vez por turno) — Tempestade: retorna o combatente ativo do oponente para o Panteão dele.",
     "custoHabilidade": 3
   },
   {
@@ -162,7 +162,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": 19,
     "combate": 12,
-    "efeito": "Disforme: Ignora fraqueza elemental até o fim do turno.",
+    "efeito": "Habilidade (uma vez por turno) — Disforme: até o fim deste turno, você ignora a vantagem elemental do oponente contra este combatente.",
     "custoHabilidade": 1
   },
   {
@@ -173,7 +173,7 @@ const CARTAS = [
     "custoMana": 5,
     "resistencia": 16,
     "combate": 20,
-    "efeito": "Ragnarok: Causa 10 de dano a todos os combatentes em campo.",
+    "efeito": "Habilidade (uma vez por turno) — Ragnarok: causa 10 de dano a todos os combatentes ativos em campo, incluindo o seu.",
     "custoHabilidade": 3
   },
   {
@@ -184,7 +184,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": 14,
     "combate": 16,
-    "efeito": "Fome: Rouba 2 pontos de Mana da reserva do oponente.",
+    "efeito": "Habilidade (uma vez por turno) — Fome: rouba até 2 de Mana da reserva do oponente (limitado ao que ele tiver) e adiciona à sua.",
     "custoHabilidade": 1
   },
   {
@@ -195,7 +195,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": 15,
     "combate": 14,
-    "efeito": "Caos: Olhe as Maldições ocultas do oponente e desarme uma.",
+    "efeito": "Habilidade (uma vez por turno) — Caos: revele as Maldições viradas para baixo do oponente e escolha uma para destruir.",
     "custoHabilidade": 2
   },
   {
@@ -206,7 +206,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": 18,
     "combate": 15,
-    "efeito": "Labirinto: Impede o inimigo de usar Habilidades de Mana.",
+    "efeito": "Habilidade (uma vez por turno) — Labirinto: impede o combatente ativo do oponente de usar a própria Habilidade neste turno (a menos que ele seja imune).",
     "custoHabilidade": 2
   },
   {
@@ -217,7 +217,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": 16,
     "combate": 17,
-    "efeito": "Três Cabeças: Ganha +2 de Combate se o alvo for do elemento Terra.",
+    "efeito": "Habilidade (uma vez por turno) — Três Cabeças: ganha +2 de Combate neste turno se o combatente ativo do oponente for do elemento Terra.",
     "custoHabilidade": 1
   },
   {
@@ -228,7 +228,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Heróis: Enquanto ativo, todos os Espíritos Heróicos ganham +3 de Combate. Se o Domínio for destruído, o dono compra 1 carta.",
+    "efeito": "Passivo (sem ativação, enquanto este Domínio estiver ativo): todo Herói em campo, de qualquer lado, ganha +3 de Combate. Gatilho — quando este Domínio for destruído: o dono dele compra 1 carta.",
     "custoHabilidade": null
   },
   {
@@ -239,7 +239,7 @@ const CARTAS = [
     "custoMana": 4,
     "resistencia": null,
     "combate": null,
-    "efeito": "Monstros: O limite máximo de atributos é ignorado. Monstros Primordiais ganham +4 de Resistência. No início do turno, ambos descartam 1 carta.",
+    "efeito": "Passivo (sem ativação, enquanto este Domínio estiver ativo): todo Monstro em campo, de qualquer lado, ganha +4 de Resistência (lembrete: o teto de 20 pontos vale só pro valor impresso na carta — habilidades e efeitos sempre podem passar disso, em qualquer carta do jogo). Gatilho — no início de qualquer turno: os dois feiticeiros descartam 1 carta aleatória da mão.",
     "custoHabilidade": null
   },
   {
@@ -250,7 +250,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Natureza (Fogo): Combatentes de Fogo causam +3 de dano. Combatentes de Vento perdem -2 de Resistência.",
+    "efeito": "Passivo (sem ativação, enquanto este Domínio estiver ativo): todo combatente de Fogo em campo, de qualquer lado, ganha +3 de Combate; todo combatente de Vento em campo, de qualquer lado, perde -2 de Resistência.",
     "custoHabilidade": null
   },
   {
@@ -261,7 +261,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Natureza (Água): Sempre que um combatente de Água usar uma Habilidade de Mana, o feiticeiro recupera 1 de Mana.",
+    "efeito": "Gatilho (sem efeito passivo) — sempre que um combatente de Água, de qualquer lado, usar sua Habilidade: o dono desse combatente recupera 1 de Mana.",
     "custoHabilidade": null
   },
   {
@@ -272,7 +272,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": null,
     "combate": null,
-    "efeito": "Natureza (Vento): Combatentes de Vento podem retornar ao Panteão logo após atacar, evitando contra-ataques.",
+    "efeito": "Gatilho (sem efeito passivo) — sempre que um combatente de Vento atacar e sobreviver: ele retorna automaticamente para o Panteão do dono logo em seguida (não é uma escolha).",
     "custoHabilidade": null
   },
   {
@@ -283,7 +283,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Natureza (Terra): Todo dano recebido por combatentes de Terra é reduzido em 3. Se um for derrotado, o feiticeiro ganha 4 de Mana.",
+    "efeito": "Passivo (sem ativação, enquanto este Domínio estiver ativo): todo dano recebido por um combatente de Terra, de qualquer lado, é reduzido em 3. Gatilho — quando um combatente de Terra for destruído: o dono DESTE DOMÍNIO (não necessariamente o dono do combatente) ganha 4 de Mana.",
     "custoHabilidade": null
   },
   {
@@ -294,7 +294,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": null,
     "combate": null,
-    "efeito": "Compre 2 cartas do Baralho Arcano.",
+    "efeito": "Ao jogar (efeito único e imediato): compre 2 cartas do seu Baralho Arcano.",
     "custoHabilidade": null
   },
   {
@@ -305,7 +305,7 @@ const CARTAS = [
     "custoMana": 1,
     "resistencia": null,
     "combate": null,
-    "efeito": "Sacrifique 5 pontos da Resistência do seu combatente para lhe dar +6 de Combate até o fim do turno.",
+    "efeito": "Ao jogar (efeito único e imediato): seu combatente ativo perde 5 de Resistência (podendo ser destruído, se isso zerar a Resistência dele); se sobreviver, ganha +6 de Combate até o fim do turno.",
     "custoHabilidade": null
   },
   {
@@ -316,7 +316,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "O oponente deve revelar sua mão. Escolha uma carta de Maldição ou Encantamento de lá e envie para a Pilha de Descarte.",
+    "efeito": "Ao jogar (efeito único e imediato): o oponente revela a mão dele; escolha 1 carta de Maldição ou Encantamento de lá e descarte.",
     "custoHabilidade": null
   },
   {
@@ -327,7 +327,7 @@ const CARTAS = [
     "custoMana": 4,
     "resistencia": null,
     "combate": null,
-    "efeito": "Escolha qualquer carta da sua Pilha de Descarte e coloque-a diretamente na sua mão.",
+    "efeito": "Ao jogar (efeito único e imediato): escolha 1 carta da sua própria Pilha de Descarte e coloque-a na sua mão. (Bloqueado enquanto Fosso de Tártaro estiver ativo.)",
     "custoHabilidade": null
   },
   {
@@ -338,7 +338,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": null,
     "combate": null,
-    "efeito": "Mude a Natureza Elemental do seu combatente ativo para qualquer outra até o início do seu próximo turno.",
+    "efeito": "Ao jogar (efeito único e imediato): escolha uma Natureza Elemental diferente da atual para o seu combatente ativo; vale até o início do seu próximo turno.",
     "custoHabilidade": null
   },
   {
@@ -349,7 +349,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Destrua a carta de Domínio ativa na mesa ou um Equipamento ligado a um combatente inimigo.",
+    "efeito": "Ao jogar (efeito único e imediato): destrua a carta de Domínio ativa no campo, seja de quem for. (A parte sobre Equipamento não se aplica — esse subtipo não existe neste baralho.)",
     "custoHabilidade": null
   },
   {
@@ -360,7 +360,7 @@ const CARTAS = [
     "custoMana": 4,
     "resistencia": null,
     "combate": null,
-    "efeito": "Retorne o combatente inimigo ativo de volta para o Panteão do oponente.",
+    "efeito": "Ao jogar (efeito único e imediato): retorne o combatente ativo do oponente para o Panteão dele.",
     "custoHabilidade": null
   },
   {
@@ -371,7 +371,7 @@ const CARTAS = [
     "custoMana": 4,
     "resistencia": null,
     "combate": null,
-    "efeito": "Quando um Espírito Heróico for derrotado, em vez de ir para a Pilha de Descarte, ele retorna para o Panteão.",
+    "efeito": "Gatilho (sem efeito passivo) — quando um Herói for derrotado, de qualquer lado: ele retorna para o Panteão do dono dele em vez de ir para a Pilha de Descarte.",
     "custoHabilidade": null
   },
   {
@@ -382,7 +382,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Todo Monstro em campo ganha +3 de Combate. Nenhuma carta pode ser retirada ou revivida da Pilha de Descarte.",
+    "efeito": "Passivo (sem ativação, enquanto este Domínio estiver ativo): todo Monstro em campo, de qualquer lado, ganha +3 de Combate; nenhuma carta pode ser recuperada da Pilha de Descarte (bloqueia Ressurreição Arcana e Chamado do Além).",
     "custoHabilidade": null
   },
   {
@@ -393,7 +393,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "No início do turno, revela a carta do topo do Baralho. Se for de Água ou Encantamento, compra de graça.",
+    "efeito": "Gatilho (sem efeito passivo) — no início do turno de cada jogador: revela a carta do topo do próprio Baralho Arcano; se for do elemento Água ou do tipo Encantamento, ele a compra de graça.",
     "custoHabilidade": null
   },
   {
@@ -404,7 +404,7 @@ const CARTAS = [
     "custoMana": 4,
     "resistencia": null,
     "combate": null,
-    "efeito": "Heróis de Fogo/Vento ignoram desvantagem elemental. Sempre que atacam, oponente descarta o topo do baralho.",
+    "efeito": "Passivo (sem ativação, enquanto este Domínio estiver ativo): todo Herói de Fogo ou Vento em campo, de qualquer lado, ignora desvantagem elemental. Gatilho — sempre que um desses Heróis atacar: o oponente dele descarta a carta do topo do próprio Baralho Arcano.",
     "custoHabilidade": null
   },
   {
@@ -415,7 +415,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": null,
     "combate": null,
-    "efeito": "Olhe as 3 cartas do topo do baralho inimigo. Descarte 1 e devolva as outras 2.",
+    "efeito": "Ao jogar (efeito único e imediato): revele as 3 cartas do topo do Baralho Arcano do oponente; escolha 1 para descartar e deixe as outras 2 no topo, na mesma ordem.",
     "custoHabilidade": null
   },
   {
@@ -426,7 +426,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Compre 2 cartas. Se tiver 1 ou 0 na mão, compre uma terceira.",
+    "efeito": "Ao jogar (efeito único e imediato): compre 2 cartas do seu Baralho Arcano; se, depois disso, sua mão tiver 1 carta ou menos, compre mais 1.",
     "custoHabilidade": null
   },
   {
@@ -437,7 +437,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": null,
     "combate": null,
-    "efeito": "Ganha +8 de Combate neste turno. Fim do turno sofre debuff permanente de -4 de Resistência.",
+    "efeito": "Ao jogar (efeito único e imediato): seu combatente ativo ganha +8 de Combate neste turno; na Fase Final deste mesmo turno, ele sofre -4 de Resistência permanente.",
     "custoHabilidade": null
   },
   {
@@ -448,7 +448,7 @@ const CARTAS = [
     "custoMana": 1,
     "resistencia": null,
     "combate": null,
-    "efeito": "Embaralhe até 3 cartas da mão no baralho. Compre a mesma quantidade.",
+    "efeito": "Ao jogar (efeito único e imediato): escolha até 3 cartas da sua mão para embaralhar de volta no Baralho Arcano; compre a mesma quantidade em seguida.",
     "custoHabilidade": null
   },
   {
@@ -459,7 +459,7 @@ const CARTAS = [
     "custoMana": 5,
     "resistencia": null,
     "combate": null,
-    "efeito": "Envie o combatente ativo inimigo direto para a Pilha de Descarte. O oponente invoca outro de graça.",
+    "efeito": "Ao jogar (efeito único e imediato): envie o combatente ativo do oponente direto para a Pilha de Descarte dele; em seguida, ele invoca outro combatente do Panteão sem pagar o Custo de Mana.",
     "custoHabilidade": null
   },
   {
@@ -470,7 +470,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Escolha uma carta de Maldição/Equipamento da Pilha de Descarte e coloque em jogo sem pagar custo.",
+    "efeito": "Ao jogar (efeito único e imediato): escolha 1 Maldição da sua própria Pilha de Descarte e coloque-a na sua mão (simplificado: vai pra mão, não direto pro campo — mas setar uma Maldição já é grátis, então o efeito prático é quase o mesmo). (Bloqueado enquanto Fosso de Tártaro estiver ativo.)",
     "custoHabilidade": null
   },
   {
@@ -481,7 +481,7 @@ const CARTAS = [
     "custoMana": 4,
     "resistencia": null,
     "combate": null,
-    "efeito": "Revele todas as Maldições do oponente. Destrua duas delas.",
+    "efeito": "Ao jogar (efeito único e imediato): revele as Maldições viradas para baixo do oponente; escolha até 2 delas para destruir, uma de cada vez.",
     "custoHabilidade": null
   },
   {
@@ -492,7 +492,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": null,
     "combate": null,
-    "efeito": "O combatente ganha +5 de Resistência e imunidade a Habilidades de Mana inimigas.",
+    "efeito": "Ao jogar (efeito único e imediato): seu combatente ativo ganha +5 de Resistência permanente e passa a ser imune a efeitos inimigos que bloqueiam ou cancelam a Habilidade dele (Minotauro, Amnésia Mágica, Roubo de Essência) enquanto continuar em campo.",
     "custoHabilidade": null
   },
   {
@@ -503,7 +503,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "O ataque é completamente anulado e o combatente inimigo perde seu elemento até o fim do turno.",
+    "efeito": "Quando você for atacado, pode revelar isto (pagando o Custo de Mana): o ataque é completamente anulado e o combatente atacante perde a Natureza Elemental (fica sem elemento) até o fim do turno.",
     "custoHabilidade": null
   },
   {
@@ -514,7 +514,7 @@ const CARTAS = [
     "custoMana": 4,
     "resistencia": null,
     "combate": null,
-    "efeito": "O seu combatente não sofre dano. O dano volta integralmente para a Resistência do atacante.",
+    "efeito": "Quando você for atacado, pode revelar isto (pagando o Custo de Mana): o dano deste combate é redirecionado para o atacante em vez de atingir o seu combatente.",
     "custoHabilidade": null
   },
   {
@@ -525,7 +525,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": null,
     "combate": null,
-    "efeito": "O combatente invocado entra em campo com -5 de Resistência permanente.",
+    "efeito": "Quando o oponente invocar um combatente, pode revelar isto (pagando o Custo de Mana): esse combatente entra em campo com -5 de Resistência permanente.",
     "custoHabilidade": null
   },
   {
@@ -536,7 +536,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Cancele a Habilidade de Mana inimiga e roube a Mana gasta para você.",
+    "efeito": "Quando o oponente ativar uma Habilidade, pode revelar isto (pagando o Custo de Mana): roube a Mana que ele gastou (o efeito da Habilidade dele ainda acontece — esta versão simplificada não cancela, só rouba o custo). Não funciona contra um combatente imune (Manto da Natureza).",
     "custoHabilidade": null
   },
   {
@@ -547,7 +547,7 @@ const CARTAS = [
     "custoMana": 1,
     "resistencia": null,
     "combate": null,
-    "efeito": "O equipamento jogado é destruído antes do efeito. Inimigo perde 1 de Mana.",
+    "efeito": "Quando o oponente jogar um Equipamento, pode revelar isto (pagando o Custo de Mana): destrua-o antes do efeito e ele perde 1 de Mana. (Não implementado nesta versão — não existe subtipo Equipamento neste baralho; esta carta só pode ser destruída por outro efeito, como Purificação Arcana.)",
     "custoHabilidade": null
   },
   {
@@ -558,7 +558,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": null,
     "combate": null,
-    "efeito": "O Combate do combatente inimigo é reduzido para exatamente 10 até o fim do turno.",
+    "efeito": "Quando você for atacado, pode revelar isto (pagando o Custo de Mana): o Combate do atacante é ajustado para exatamente 10 até o fim do turno.",
     "custoHabilidade": null
   },
   {
@@ -569,7 +569,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Oponente descarta a carta recém comprada no turno e compra a do fundo do baralho.",
+    "efeito": "Quando o oponente comprar a carta automática da Fase de Saque, pode revelar isto (pagando o Custo de Mana): ele descarta essa carta e compra a carta do fundo do próprio Baralho Arcano.",
     "custoHabilidade": null
   },
   {
@@ -580,7 +580,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "O ataque é negado e o atacante retorna ao Panteão.",
+    "efeito": "Quando você for atacado, pode revelar isto (pagando o Custo de Mana): o ataque é negado e o combatente atacante retorna para o Panteão do dono dele.",
     "custoHabilidade": null
   },
   {
@@ -591,7 +591,7 @@ const CARTAS = [
     "custoMana": 4,
     "resistencia": null,
     "combate": null,
-    "efeito": "Você não sofre dano, reflete tudo para a Resistência do inimigo.",
+    "efeito": "Quando você for atacado, pode revelar isto (pagando o Custo de Mana): o dano deste combate é redirecionado para o atacante em vez de atingir o seu combatente.",
     "custoHabilidade": null
   },
   {
@@ -602,7 +602,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": null,
     "combate": null,
-    "efeito": "Inimigo entra sofrendo -5 de Resistência e -3 de Combate.",
+    "efeito": "Quando o oponente invocar um combatente, pode revelar isto (pagando o Custo de Mana): esse combatente entra em campo com -5 de Resistência e -3 de Combate, permanentemente.",
     "custoHabilidade": null
   },
   {
@@ -613,7 +613,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": null,
     "combate": null,
-    "efeito": "Inimigo descarta a carta de maior custo ao tentar comprar cartas extras.",
+    "efeito": "Quando o oponente comprar carta por um efeito de outra carta (não a compra automática do turno), pode revelar isto (pagando o Custo de Mana): ele descarta a carta de maior Custo de Mana da própria mão.",
     "custoHabilidade": null
   },
   {
@@ -624,7 +624,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "A Habilidade de Mana falha e o combatente perde o direito de usar habilidades.",
+    "efeito": "Quando o oponente ativar uma Habilidade, pode revelar isto (pagando o Custo de Mana): o combatente dele fica impedido de usar a Habilidade de novo neste turno (o efeito já ativado ainda acontece — esta versão simplificada não desfaz o que já rodou). Não funciona contra um combatente imune (Manto da Natureza).",
     "custoHabilidade": null
   },
   {
@@ -635,7 +635,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": null,
     "combate": null,
-    "efeito": "Inverte o buff ativado pelo inimigo (ex: +4 vira -4).",
+    "efeito": "Quando o oponente ativar uma Habilidade, pode revelar isto (pagando o Custo de Mana): inverte o sinal de todos os bônus/penalidades de Combate e Resistência atualmente ativos no combatente dele (ex.: +4 vira -4). Aproximação: dispara na ativação de qualquer Habilidade, não só quando ela concede um buff específico.",
     "custoHabilidade": null
   },
   {
@@ -646,7 +646,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Redireciona feitiço inimigo para o combatente dele próprio.",
+    "efeito": "Redireciona o próximo feitiço do oponente para o combatente dele próprio. (Não implementado nesta versão — exigiria rastrear \"o próximo feitiço inimigo\" antes de ele resolver; revelar esta carta não tem efeito nenhum no jogo atual.)",
     "custoHabilidade": null
   },
   {
@@ -657,7 +657,7 @@ const CARTAS = [
     "custoMana": 1,
     "resistencia": null,
     "combate": null,
-    "efeito": "Ao ter Domínio/Combatente destruído, força inimigo a descartar 3 cartas do topo do baralho.",
+    "efeito": "Quando você tiver um Domínio ou Combatente destruído, pode revelar isto (pagando o Custo de Mana): o oponente descarta 3 cartas aleatórias da própria mão.",
     "custoHabilidade": null
   },
   {
@@ -668,7 +668,7 @@ const CARTAS = [
     "custoMana": 3,
     "resistencia": null,
     "combate": null,
-    "efeito": "Escolha o seu Combatente em campo e 1 no Panteão. Se um deles for alvo de um ataque ou de um efeito de carta do oponente, você pode dividir o dano da batalha igualmente entre os dois. ",
+    "efeito": "Escolha o seu Combatente em campo e 1 no Panteão. Se um deles for alvo de um ataque ou de um efeito de carta do oponente, você pode dividir o dano da batalha igualmente entre os dois. (Não implementado nesta versão do motor — exigiria um mecanismo de \"par de alvos vinculados\" à parte; jogar esta carta não tem efeito nenhum no jogo atual.)",
     "custoHabilidade": null
   }
 ];

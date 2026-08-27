@@ -20,33 +20,35 @@ Ambas usam notação BNF: `::=` define uma produção, `|` é alternativa, `?` �
 ```
 ⟨Partida⟩       ::= ⟨Turno⟩ ⟨Partida⟩ | ⟨Turno⟩
 
-⟨Turno⟩         ::= ⟨FaseRecurso⟩ ⟨FaseInvocacao⟩ ⟨FaseTatica⟩ ⟨FaseCombate⟩
+⟨Turno⟩         ::= ⟨FaseSaque⟩ ⟨FaseInvocacao⟩ ⟨FasePrincipal⟩ ⟨FaseBatalha⟩ ⟨FaseFinal⟩
 
-⟨FaseRecurso⟩   ::= COMPRAR GANHAR_MANA
+⟨FaseSaque⟩     ::= COMPRAR
 
-⟨FaseInvocacao⟩ ::= INVOCAR | ε
+⟨FaseInvocacao⟩ ::= GANHAR_MANA INVOCAR | GANHAR_MANA
 
-⟨FaseTatica⟩    ::= ⟨AcaoTatica⟩ ⟨FaseTatica⟩ | ε
+⟨FasePrincipal⟩ ::= ⟨AcaoPrincipal⟩ ⟨FasePrincipal⟩ | ε
 
-⟨AcaoTatica⟩    ::= ATIVAR_DOMINIO
+⟨AcaoPrincipal⟩ ::= ATIVAR_DOMINIO
                    | JOGAR_ENCANTAMENTO
                    | BAIXAR_MALDICAO
                    | ATIVAR_HABILIDADE
 
-⟨FaseCombate⟩   ::= ⟨AcaoDeHabilidade⟩ ⟨Ataque⟩
+⟨FaseBatalha⟩   ::= ⟨AcaoDeHabilidade⟩ ⟨Ataque⟩
                    | ⟨Ataque⟩
                    | ε
 
 ⟨AcaoDeHabilidade⟩ ::= ATIVAR_HABILIDADE
 
 ⟨Ataque⟩        ::= DECLARAR_ATAQUE
+
+⟨FaseFinal⟩     ::= ε
 ```
 
-Cada não-terminal mapeia direto para uma seção de `GAME_DESIGN.md`: `⟨FaseRecurso⟩` é a Fase de Recurso e Compra, `⟨AcaoTatica⟩` é a lista de "Ações do Jogador" da Fase Tática, etc.
+Cada não-terminal mapeia direto para uma seção de `GAME_DESIGN.md`, "A Estrutura do Turno": `⟨FaseSaque⟩` é a Fase de Saque (só compra automática), `⟨FaseInvocacao⟩` credita a Mana do turno e permite invocar, `⟨AcaoPrincipal⟩` é a lista de "Ações do Jogador" da Fase Principal, `⟨FaseFinal⟩` é a Fase Final (limpeza de fim de turno — sem ação do jogador, por isso `ε`).
 
 ### Observação estrutural
 
-Essa gramática não tem recursão aninhada de verdade — `⟨Partida⟩` e `⟨FaseTatica⟩` só repetem um bloco (o equivalente a `*` do Kleene), sem nada tipo parênteses que precisem "casar". Isso significa que a linguagem gerada é, na prática, **regular** (daria pra reconhecer com um autômato finito), não estritamente livre-de-contexto. Escrevê-la como CFG continua correto — toda linguagem regular é um caso particular de livre-de-contexto — só vale registrar que o jogo não tem estrutura recursiva/aninhada no nível do turno.
+Essa gramática não tem recursão aninhada de verdade — `⟨Partida⟩` e `⟨FasePrincipal⟩` só repetem um bloco (o equivalente a `*` do Kleene), sem nada tipo parênteses que precisem "casar". Isso significa que a linguagem gerada é, na prática, **regular** (daria pra reconhecer com um autômato finito), não estritamente livre-de-contexto. Escrevê-la como CFG continua correto — toda linguagem regular é um caso particular de livre-de-contexto — só vale registrar que o jogo não tem estrutura recursiva/aninhada no nível do turno.
 
 ### Derivação de exemplo
 
@@ -54,10 +56,11 @@ Um turno onde o jogador compra, invoca o Fenrir, ativa um Domínio, joga um Enca
 
 ```
 ⟨Turno⟩
-⇒ ⟨FaseRecurso⟩ ⟨FaseInvocacao⟩ ⟨FaseTatica⟩ ⟨FaseCombate⟩
-⇒ COMPRAR GANHAR_MANA ⟨FaseInvocacao⟩ ⟨FaseTatica⟩ ⟨FaseCombate⟩
-⇒ COMPRAR GANHAR_MANA INVOCAR ⟨FaseTatica⟩ ⟨FaseCombate⟩
-⇒ COMPRAR GANHAR_MANA INVOCAR ATIVAR_DOMINIO JOGAR_ENCANTAMENTO ⟨FaseCombate⟩
+⇒ ⟨FaseSaque⟩ ⟨FaseInvocacao⟩ ⟨FasePrincipal⟩ ⟨FaseBatalha⟩ ⟨FaseFinal⟩
+⇒ COMPRAR ⟨FaseInvocacao⟩ ⟨FasePrincipal⟩ ⟨FaseBatalha⟩ ⟨FaseFinal⟩
+⇒ COMPRAR GANHAR_MANA INVOCAR ⟨FasePrincipal⟩ ⟨FaseBatalha⟩ ⟨FaseFinal⟩
+⇒ COMPRAR GANHAR_MANA INVOCAR ATIVAR_DOMINIO JOGAR_ENCANTAMENTO ⟨FaseBatalha⟩ ⟨FaseFinal⟩
+⇒ COMPRAR GANHAR_MANA INVOCAR ATIVAR_DOMINIO JOGAR_ENCANTAMENTO ATIVAR_HABILIDADE DECLARAR_ATAQUE ⟨FaseFinal⟩
 ⇒ COMPRAR GANHAR_MANA INVOCAR ATIVAR_DOMINIO JOGAR_ENCANTAMENTO ATIVAR_HABILIDADE DECLARAR_ATAQUE
 ```
 
@@ -67,7 +70,7 @@ Um CFG só descreve *forma* — não conta pontos nem compara números, então e
 
 * `INVOCAR` só é válido se não houver combatente ativo em campo (o jogo usa exatamente 1 por vez — ver "combatente ativo" nas cartas).
 * Cada token de custo (`INVOCAR`, `ATIVAR_DOMINIO`, `JOGAR_ENCANTAMENTO`, `BAIXAR_MALDICAO`, `ATIVAR_HABILIDADE`) exige Mana suficiente na reserva, debitada no momento da ação.
-* `ATIVAR_HABILIDADE` só pode aparecer **uma vez por turno**, mesmo podendo estar na `⟨FaseTatica⟩` ou na `⟨FaseCombate⟩` (a gramática permite os dois lugares; a regra de "uma vez" é contada fora da gramática).
+* `ATIVAR_HABILIDADE` só pode aparecer **uma vez por turno**, mesmo podendo estar na `⟨FasePrincipal⟩` ou na `⟨FaseBatalha⟩` (a gramática permite os dois lugares; a regra de "uma vez" é contada fora da gramática).
 * `⟨Mão⟩` nunca pode ter mais que 6 cartas após `COMPRAR`.
 * `⟨Partida⟩` termina quando os Pontos de Vida de um feiticeiro chegam a 0, ou quando ele precisa invocar e não tem combatente disponível — ambas são checagens numéricas/de estado, não parte do CFG.
 
