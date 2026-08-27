@@ -543,23 +543,64 @@ def _(ctrl, player_id, card, evento=None):
 # Faixa de POW até 14: baratos, focados em busca de carta e farm de Mana
 # pra abrir caminho pro combatente Poderoso — não em brigar (por isso a
 # Habilidade de cada um é só um dos dois primitivos de sempre, comprar/
-# ganhar_mana, sem nenhum efeito de combate).
+# ganhar_mana, sem nenhum efeito de combate). As 3 Habilidades de +Mana
+# (Gnomos das Minas, Soldados de Camelot, Zumbis Errantes) têm um
+# drawback além do Custo de Habilidade — ver _drawback_carta_ou_maldicao.
+
+def _drawback_carta_ou_maldicao(ctrl, player_id: int, nome_carta: str) -> None:
+    """Drawback de mana: o jogador ESCOLHE entre descartar 1 carta da mão
+    ou destruir 1 Maldição virada para baixo sua (nunca do oponente — é
+    um preço pago com o próprio recurso, mesmo espírito do sacrifício dos
+    Encantamentos Contínuos). As duas opções entram no mesmo pedido de
+    seleção — mão + Maldições setadas do próprio jogador — porque ambas
+    são só "escolha 1 carta", diferindo apenas em pra onde ela vai depois.
+    Sem opção nenhuma disponível (mão vazia e nenhuma Maldição setada), a
+    Habilidade segue sem custo — mesma leniência de Pacto de Sangue/Selva
+    Amazônica quando falta o alvo do sacrifício."""
+    ps = ctrl.players[player_id]
+    lado = ctrl.board.lado(player_id)
+    maldicoes_proprias = [c for c in lado.magia if c is not None and ctrl.world.has_component(c, FaceDown)]
+    opcoes = list(ps.mao) + maldicoes_proprias
+    if not opcoes:
+        return
+
+    def _ao_escolher(escolha: list[int]) -> None:
+        escolhida = escolha[0]
+        if escolhida in ps.mao:
+            ps.mao.remove(escolhida)
+            loc = ctrl.world.get_component(escolhida, Location)
+            if loc:
+                loc.zona = Zona.PILHA_DESCARTE
+            ctrl.bus.publish(CardDiscarded(player_id=player_id, card=escolhida))
+        else:
+            destruir(ctrl, escolhida, nome_carta)
+
+    ctrl.solicitar_selecao(
+        player_id=player_id,
+        prompt=f"{nome_carta}: descarte 1 carta da mão ou destrua 1 Maldição virada para baixo sua",
+        opcoes=opcoes,
+        on_resolved=_ao_escolher,
+    )
+
 
 @EFFECTS.registrar("Gnomos das Minas")
 def _(ctrl, player_id, card, evento=None):
     # ganha 2, Custo de Habilidade e 1 -> +1 de Mana liquido por ativacao,
     # senao a Habilidade so pagaria a si mesma (sem farm de verdade).
     ganhar_mana(ctrl, player_id, 2)
+    _drawback_carta_ou_maldicao(ctrl, player_id, "Gnomos das Minas")
 
 
 @EFFECTS.registrar("Soldados de Camelot")
 def _(ctrl, player_id, card, evento=None):
     ganhar_mana(ctrl, player_id, 2)  # mesma logica de Gnomos das Minas acima
+    _drawback_carta_ou_maldicao(ctrl, player_id, "Soldados de Camelot")
 
 
 @EFFECTS.registrar("Zumbis Errantes")
 def _(ctrl, player_id, card, evento=None):
     ganhar_mana(ctrl, player_id, 3)  # Custo de Habilidade 2 -> +1 liquido
+    _drawback_carta_ou_maldicao(ctrl, player_id, "Zumbis Errantes")
 
 
 @EFFECTS.registrar("Fadas do Bosque")

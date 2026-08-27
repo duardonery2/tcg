@@ -776,7 +776,7 @@ const CARTAS = [
     "custoMana": 1,
     "resistencia": 12,
     "combate": 6,
-    "efeito": "Uma vez por turno ganha 2 de Mana.",
+    "efeito": "Uma vez por turno ganha 2 de Mana, descartando 1 carta da mão ou destruindo 1 Maldição virada para baixo sua, à sua escolha.",
     "custoHabilidade": 1,
     "tipoEncantamento": null
   },
@@ -788,7 +788,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": 15,
     "combate": 13,
-    "efeito": "Uma vez por turno ganha 2 de Mana.",
+    "efeito": "Uma vez por turno ganha 2 de Mana, descartando 1 carta da mão ou destruindo 1 Maldição virada para baixo sua, à sua escolha.",
     "custoHabilidade": 1,
     "tipoEncantamento": null
   },
@@ -800,7 +800,7 @@ const CARTAS = [
     "custoMana": 2,
     "resistencia": 13,
     "combate": 9,
-    "efeito": "Uma vez por turno ganha 3 de Mana.",
+    "efeito": "Uma vez por turno ganha 3 de Mana, descartando 1 carta da mão ou destruindo 1 Maldição virada para baixo sua, à sua escolha.",
     "custoHabilidade": 2,
     "tipoEncantamento": null
   },

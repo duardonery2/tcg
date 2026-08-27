@@ -351,15 +351,57 @@ reg("Quimera", (game, playerId, carta) => {
 // Faixa de POW até 14: baratos, focados em busca de carta e farm de Mana
 // pra abrir caminho pro combatente Poderoso — não em brigar (por isso a
 // Habilidade de cada um é só um dos dois primitivos de sempre, comprar/
-// ganharMana, sem nenhum efeito de combate).
+// ganharMana, sem nenhum efeito de combate). As 3 Habilidades de +Mana
+// (Gnomos das Minas, Soldados de Camelot, Zumbis Errantes) têm um
+// drawback além do Custo de Habilidade — ver drawbackCartaOuMaldicao.
+
+// Drawback de mana: o jogador ESCOLHE entre descartar 1 carta da mão ou
+// destruir 1 Maldição virada para baixo sua (nunca do oponente — preço
+// pago com o próprio recurso, mesmo espírito do sacrifício dos
+// Encantamentos Contínuos). As duas opções entram no mesmo pedido de
+// seleção — mão + Maldições setadas do próprio jogador — porque ambas são
+// só "escolha 1 carta", diferindo apenas em pra onde ela vai depois. Sem
+// opção nenhuma disponível (mão vazia e nenhuma Maldição setada), a
+// Habilidade segue sem custo — mesma leniência de Pacto de Sangue/Selva
+// Amazônica quando falta o alvo do sacrifício.
+function drawbackCartaOuMaldicao(game, playerId, nomeCarta) {
+  const ps = game.players[playerId];
+  const lado = game.board[playerId];
+  const maldicoesProprias = lado.magia.filter((c) => c && c.faceDown);
+  const opcoes = ps.mao.concat(maldicoesProprias);
+  if (!opcoes.length) return;
+  game.selection.solicitar(
+    playerId, `${nomeCarta}: descarte 1 carta da mão ou destrua 1 Maldição virada para baixo sua`,
+    opcoes,
+    (escolha) => {
+      const escolhida = escolha[0];
+      if (ps.mao.includes(escolhida)) {
+        ps.mao.splice(ps.mao.indexOf(escolhida), 1);
+        game.descarte[playerId].push(escolhida);
+        game.bus.emit("cartaDescartada", { playerId, carta: escolhida });
+      } else {
+        TCG.destruir(game, escolhida, nomeCarta);
+      }
+    }
+  );
+}
 
 // ganha 2, Custo de Habilidade é 1 -> +1 de Mana líquido por ativação,
 // senão a Habilidade só pagaria a si mesma (sem farm de verdade).
-reg("Gnomos das Minas", (game, playerId) => TCG.ganharMana(game, playerId, 2));
+reg("Gnomos das Minas", (game, playerId) => {
+  TCG.ganharMana(game, playerId, 2);
+  drawbackCartaOuMaldicao(game, playerId, "Gnomos das Minas");
+});
 
-reg("Soldados de Camelot", (game, playerId) => TCG.ganharMana(game, playerId, 2)); // mesma lógica acima
+reg("Soldados de Camelot", (game, playerId) => { // mesma lógica de Gnomos das Minas acima
+  TCG.ganharMana(game, playerId, 2);
+  drawbackCartaOuMaldicao(game, playerId, "Soldados de Camelot");
+});
 
-reg("Zumbis Errantes", (game, playerId) => TCG.ganharMana(game, playerId, 3)); // Custo de Habilidade 2 -> +1 líquido
+reg("Zumbis Errantes", (game, playerId) => { // Custo de Habilidade 2 -> +1 líquido
+  TCG.ganharMana(game, playerId, 3);
+  drawbackCartaOuMaldicao(game, playerId, "Zumbis Errantes");
+});
 
 reg("Fadas do Bosque", (game, playerId) => TCG.comprar(game, playerId, 1));
 
