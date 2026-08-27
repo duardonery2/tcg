@@ -332,6 +332,12 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
     if (game.board[jogadorLocal].monstro !== null) { avancarSeAindaNaoAcabou(); return; }
     const opcoesPanteao = TCG.Deck.restantes(game.panteoes[jogadorLocal]);
     if (!opcoesPanteao.length) { avancarSeAindaNaoAcabou(); return; }
+    // sem Mana pra invocar NENHUM combatente do Panteão: pula a fase sozinho
+    // em vez de abrir o modal só pra oferecer um "Pular" que é a única
+    // escolha possível — mesmo critério (custoMana <= mana) que
+    // opcoesInvocar (ai.js) já usa pro turno automático da IA.
+    const mana = game.players[jogadorLocal].mana;
+    if (!opcoesPanteao.some((c) => c.custoMana <= mana)) { avancarSeAindaNaoAcabou(); return; }
     game.selection.solicitar(
       jogadorLocal, "Escolha um Combatente para invocar", opcoesPanteao,
       (escolha) => {
