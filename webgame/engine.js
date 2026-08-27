@@ -10,12 +10,12 @@ TCG.MAO_INICIAL = 4;
 TCG.MANA_POR_TURNO = 2;
 TCG.LIMITE_MAO = 6;
 TCG.PANTEAO_TAMANHO = 5;
-// Tamanho mínimo do Baralho Arcano num deck CUSTOMIZADO (ver
-// TCG.validarDeckCustomizado abaixo, webgame/deckbuilder.js) — não existe
-// teto além do próprio pool (44 cartas de suporte). Só se aplica a um deck
-// escolhido à mão; a geração automática sempre usa as 44 inteiras, como
-// sempre fez.
-TCG.BARALHO_ARCANO_MINIMO = 20;
+// Tamanho EXATO do Baralho Arcano num deck CUSTOMIZADO (ver
+// TCG.validarDeckCustomizado abaixo, webgame/deckbuilder.js) — mesma
+// exigência de exatidão do Panteão, só que sobre um pool maior (25 de 44
+// cartas de suporte). Só se aplica a um deck escolhido à mão; a geração
+// automática sempre usa as 44 inteiras, como sempre fez.
+TCG.BARALHO_ARCANO_TAMANHO = 25;
 
 let _proximoInstanceId = 1;
 
@@ -140,8 +140,8 @@ TCG.validarDeckCustomizado = function validarDeckCustomizado(deckCustom) {
     erros.push(`O Panteão precisa ter exatamente ${TCG.PANTEAO_TAMANHO} combatentes (tem ${deckCustom.panteao.length}).`);
   }
   if (new Set(deckCustom.baralhoArcano).size !== deckCustom.baralhoArcano.length) erros.push("Baralho Arcano tem cartas repetidas.");
-  if (deckCustom.baralhoArcano.length < TCG.BARALHO_ARCANO_MINIMO) {
-    erros.push(`O Baralho Arcano precisa ter pelo menos ${TCG.BARALHO_ARCANO_MINIMO} cartas (tem ${deckCustom.baralhoArcano.length}).`);
+  if (deckCustom.baralhoArcano.length !== TCG.BARALHO_ARCANO_TAMANHO) {
+    erros.push(`O Baralho Arcano precisa ter exatamente ${TCG.BARALHO_ARCANO_TAMANHO} cartas (tem ${deckCustom.baralhoArcano.length}).`);
   }
   const combatentesValidos = new Set(CARTAS.filter((c) => c.tipo === "Herói" || c.tipo === "Monstro").map((c) => c.nome));
   const apoioValidos = new Set(CARTAS.filter((c) => c.tipo !== "Herói" && c.tipo !== "Monstro").map((c) => c.nome));

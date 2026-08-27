@@ -19,7 +19,17 @@
         <span class="pool-secao__contador" id="contador-panteao"></span>
       </div>
       <div class="pool-secao__aviso" id="aviso-panteao"></div>
-      <div class="pool-grid" id="grid-panteao"></div>
+      <input type="text" class="busca-carta" id="busca-panteao" placeholder="Buscar combatente..." />
+      <div class="pool-colunas">
+        <div class="pool-coluna">
+          <div class="pool-coluna__titulo">Disponíveis</div>
+          <div class="pool-grid" id="grid-panteao-disponiveis"></div>
+        </div>
+        <div class="pool-coluna">
+          <div class="pool-coluna__titulo">No Panteão</div>
+          <div class="pool-grid" id="grid-panteao-selecionadas"></div>
+        </div>
+      </div>
     </div>
 
     <div class="pool-secao">
@@ -27,8 +37,18 @@
         <h2>Baralho Arcano</h2>
         <span class="pool-secao__contador" id="contador-arcano"></span>
       </div>
-      <div class="pool-secao__aviso"></div>
-      <div class="pool-grid" id="grid-arcano"></div>
+      <div class="pool-secao__aviso" id="aviso-arcano"></div>
+      <input type="text" class="busca-carta" id="busca-arcano" placeholder="Buscar carta..." />
+      <div class="pool-colunas">
+        <div class="pool-coluna">
+          <div class="pool-coluna__titulo">Disponíveis</div>
+          <div class="pool-grid" id="grid-arcano-disponiveis"></div>
+        </div>
+        <div class="pool-coluna">
+          <div class="pool-coluna__titulo">No Baralho</div>
+          <div class="pool-grid" id="grid-arcano-selecionadas"></div>
+        </div>
+      </div>
     </div>
   </div>
 

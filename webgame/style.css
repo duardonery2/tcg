@@ -470,9 +470,26 @@ main.tela-deckbuilder { grid-template-rows: 1fr; }
 .pool-secao__contador.ok { color: var(--accent-2); }
 .pool-secao__contador.invalido { color: var(--perigo); }
 .pool-secao__aviso { color: var(--perigo); font-size: 0.78rem; min-height: 1em; }
+.busca-carta {
+  background: var(--bg-slot); border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 0.85rem;
+  flex: 0 0 auto;
+}
+.busca-carta::placeholder { color: var(--text-muted); }
+.busca-carta:focus { outline: none; border-color: var(--accent); }
+/* Duas colunas por seção — "Disponíveis" (pool inteiro filtrado pela busca,
+   clique ADICIONA) à esquerda, o baralho atual (clique REMOVE) à direita —
+   cada uma rolável de forma independente. */
+.pool-colunas { display: flex; gap: 8px; flex: 1 1 0; min-height: 0; }
+.pool-coluna { flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; min-height: 0; min-width: 0; }
+.pool-coluna__titulo {
+  font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.03em; flex: 0 0 auto;
+}
 .pool-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
-  gap: 8px; overflow-y: auto; flex: 1 1 0; min-height: 0; padding: 4px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px; overflow-y: auto; flex: 1 1 0; min-height: 0; padding: 4px;
+  align-content: start;
 }
 .carta-pool { cursor: pointer; text-align: center; }
 .carta-pool img {
