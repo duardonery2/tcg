@@ -321,13 +321,19 @@ class SetCurseAction:
 
 @dataclass
 class ActivateSetCurseAction:
-    """Revela e resolve uma Maldicao ja setada — chamada pela decisão do
-    dono dentro de curses.ofertar_maldicoes_reativas, nunca solta. E aqui,
-    na ativação, que o Custo de Mana da carta e cobrado (setar foi de
-    graça). `evento` (opcional): o evento que motivou a oferta, repassado
-    pro efeito da carta (ver comentário no topo da seção Maldições de
-    effects.py) — fica `None` se revelada manualmente (sem um evento
-    associado)."""
+    """Revela e resolve uma Maldicao ja setada — SÓ chamada pela decisão do
+    dono dentro de curses.ofertar_maldicoes_reativas, nunca por um clique
+    livre da UI: o "a qualquer momento no turno do oponente"
+    (GAME_DESIGN.md) descreve QUANDO a janela reativa pode aparecer, não
+    uma permissão pra virar a carta sem o gatilho dela (`EFFECTS.
+    registrar_gatilho_maldicao`) ter disparado — sem isso, dava pra
+    ativar "negar o próximo ataque" fora de qualquer ataque, sem contexto
+    nenhum (bug real, corrigido junto com a remoção do clique livre em
+    webgame/ui.js). E aqui, na ativação, que o Custo de Mana da carta e
+    cobrado (setar foi de graça). `evento` (opcional): o evento que
+    motivou a oferta, repassado pro efeito da carta (ver comentário no
+    topo da seção Maldições de effects.py); só fica `None` numa chamada
+    direta de teste/demo fora do fluxo reativo (ex.: demo_mecanismos.py)."""
     player_id: int
     card: int
     evento: object | None = None

@@ -194,13 +194,18 @@ TCG.acoes = {
     }
   },
 
-  // Revela e resolve uma Maldição já setada — chamada pela decisão do dono
-  // dentro de TCG.ofertarMaldicoesReativas (curses.js), nunca solta. E aqui,
-  // na ativação, que o Custo de Mana da carta é cobrado (setar foi de
-  // graça). `evento` (opcional): o evento que motivou a oferta, repassado
-  // pro efeito da carta (ver comentário no topo da seção Maldições de
-  // effects.js) — fica `null` se revelada manualmente (clique direto no
-  // próprio verso em campo), sem um evento associado.
+  // Revela e resolve uma Maldição já setada — SÓ chamada pela decisão do
+  // dono dentro de TCG.ofertarMaldicoesReativas (curses.js), nunca por um
+  // clique livre da UI: o "a qualquer momento no turno do oponente"
+  // (GAME_DESIGN.md) descreve QUANDO a janela reativa pode aparecer, não
+  // uma permissão pra virar a carta sem o gatilho dela
+  // (TCG.GATILHOS_DE_MALDICAO) ter disparado — sem isso, dava pra ativar
+  // "negar o próximo ataque" fora de qualquer ataque, sem contexto nenhum
+  // (bug real, corrigido junto com a remoção do clique livre em ui.js). E
+  // aqui, na ativação, que o Custo de Mana da carta é cobrado (setar foi
+  // de graça). `evento` (opcional): o evento que motivou a oferta,
+  // repassado pro efeito da carta (ver comentário no topo da seção
+  // Maldições de effects.js).
   ativarMaldicaoSetada(game, playerId, carta, evento = null) {
     const lado = game.board[playerId];
     if (!lado.magia.includes(carta)) throw new TCG.AcaoInvalida("Essa Maldição não está setada nesse lado do tabuleiro.");

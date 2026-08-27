@@ -259,13 +259,18 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
       // o Domínio ocupa um slot de magia normalmente, ALÉM de virar a arte
       // de fundo do campo inteiro do dono (acima) — as duas coisas juntas.
       if (carta && carta.faceDown) {
-        // só o dono pode revelar a própria Maldição, e só "a qualquer
-        // momento no turno do OPONENTE" (GAME_DESIGN.md) — nunca no próprio.
-        const revelavel = ehLocal && game.jogadorDaVez !== playerId;
+        // NÃO clicável: uma Maldição setada só pode ser revelada em REAÇÃO
+        // ao gatilho de evento próprio dela (TCG.GATILHOS_DE_MALDICAO,
+        // effects.js) — é TCG.ofertarMaldicoesReativas, chamado no exato
+        // momento em que o evento certo acontece (ex.: um ataque sendo
+        // declarado, pro "negar o próximo ataque"), quem abre o modal de
+        // "ativar agora?" pro dono. Um clique livre aqui deixaria ativar
+        // sem o contexto do gatilho ter sido satisfeito — bug real que
+        // isso corrige (a carta virava sem o evento que a habilita
+        // sequer ter ocorrido).
         linhaMagia.appendChild(elSlot({
           carta: null, versoOculto: true, textoVerso: "Maldição virada para baixo",
           cartaPreview: ehLocal ? carta : null, // o dono sempre pode ver a própria; o oponente nunca
-          onClick: revelavel ? () => tentar(() => acoes.ativarMaldicaoSetada(game, playerId, carta)) : null,
         }));
       } else {
         linhaMagia.appendChild(elSlot({ carta }));

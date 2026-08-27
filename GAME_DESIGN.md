@@ -112,12 +112,14 @@ As 70 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comu
 | Jogar um Encantamento (Tipo de Encantamento: Equipamento) | Fase Principal, exige um combatente ativo | Custo de Mana da carta | Manto da Natureza |
 | Jogar um Encantamento (Tipo de Encantamento: Contínuo) | Fase Principal | Nenhuma Mana — um sacrifício próprio, no lugar (ver abaixo) | Oásis do Saara, Geleiras do Ártico, Selva Amazônica |
 | Baixar uma Maldição virada para baixo | Fase Principal | Nenhum (grátis) | qualquer Maldição |
-| Revelar/ativar uma Maldição já setada | A qualquer momento no turno do oponente | Custo de Mana da carta | qualquer Maldição |
+| Revelar/ativar uma Maldição já setada | Em REAÇÃO ao gatilho de evento da própria carta, contanto que aconteça no turno do oponente | Custo de Mana da carta | qualquer Maldição |
 | Declarar um ataque | Fase de Batalha, 1x/turno por combatente, nunca no 1º turno da partida | — | — |
 
 > **Trocar de Combatente destrói, não devolve ao Panteão.** É uma segunda porta de entrada pro Panteão, além da Invocação normal (Fase de Invocação, só serve com o slot vazio) — na Fase Principal, o jogador pode abrir o Panteão e invocar outro Combatente pagando o Custo de Mana normal da carta, mesmo já havendo um ativo em campo. Nesse caso o combatente anterior é DESTRUÍDO (vai pra Pilha de Descarte e dispara qualquer gatilho "ao ser destruído" — Cu Chulainn, Trono de Camelot, etc.), não devolvido ao Panteão como Cânion dos Ventos faz. Sem limite de vezes por turno além da própria Mana disponível.
 >
 > **Maldição: o custo é pago na ativação, não ao baixar.** Setar uma Maldição virada para baixo é grátis — ela só cobra o Custo de Mana impresso na carta no momento em que é revelada/ativada. Isso significa que dá pra baixar uma Maldição mesmo sem mana nenhuma, mas se não houver mana disponível quando chegar a hora de ativá-la, a ativação falha (a carta continua virada para baixo em campo até haver mana ou até ser destruída por outro efeito).
+>
+> **Maldição: revelar é sempre uma reação, nunca um clique livre.** "A qualquer momento no turno do oponente" descreve QUANDO a janela de ativação pode se abrir — não é uma permissão pra virar a carta na hora que o jogador quiser. Cada Maldição declara o evento que a habilita (`EFFECTS.registrar_gatilho_maldicao`/`TCG.GATILHOS_DE_MALDICAO` — ex.: Escudo de Gelo Absoluto e Barreira de Vento Cortante só ficam elegíveis quando um ataque é DECLARADO contra o dono); o jogo mesmo oferece o modal de "ativar agora?" só nesse momento (`ofertar_maldicoes_reativas`/`ofertarMaldicoesReativas`), e nunca antes. Virar a carta sem esse gatilho ter disparado (ex.: "negar o próximo ataque" fora de qualquer ataque) não é uma ativação válida.
 
 > **Tipo de Encantamento:** toda carta Tipo=Encantamento agora carrega uma subcategoria própria (coluna "Tipo de Encantamento" no CSV) com 3 valores possíveis:
 > - **Simples** — o Encantamento de sempre: paga o Custo de Mana da carta, resolve o efeito na hora e vai pra Pilha de Descarte. É o valor de todas as 16 cartas de Encantamento que já existiam antes desta subcategoria ser criada (Tomo do Oráculo, Pacto de Sangue, etc.).
