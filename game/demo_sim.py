@@ -68,6 +68,7 @@ def main() -> None:
     escolhido = p1_panteao_ids[0]
     print(f"  escolhendo {ctrl.nome_da_carta(escolhido)} (custo "
           f"{ctrl.world.get_component(escolhido, __import__('game.components', fromlist=['ManaCost']).ManaCost).valor})")
+    ctrl.players[1].mana = 20  # cobre até o Custo de Mana mais caro do Panteão sorteado
     ctrl.submeter_acao(SummonAction(player_id=1, card=escolhido))
 
     print("\n=== Fase Principal: (nada a fazer neste exemplo) ===")

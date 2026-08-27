@@ -80,6 +80,7 @@ def main() -> None:
     print("\n=== 3) Domínio / Encantamento / Maldição ===")
     ctrl.avancar_fase()  # SAQUE -> INVOCACAO
     algum = ctrl.panteoes[1].restantes()[0]
+    ctrl.players[1].mana = 20  # cobre até o Custo de Mana mais caro do Panteão sorteado
     ctrl.submeter_acao(SummonAction(player_id=1, card=algum))
     ctrl.avancar_fase()  # INVOCACAO -> PRINCIPAL
 
