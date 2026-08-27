@@ -9,7 +9,8 @@ const CARTAS = [
     "resistencia": 16,
     "combate": 18,
     "efeito": "Uma vez por turno ganha +4 de Combate neste turno.",
-    "custoHabilidade": 1
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
   },
   {
     "nome": "Beowulf",
@@ -20,7 +21,8 @@ const CARTAS = [
     "resistencia": 18,
     "combate": 16,
     "efeito": "Uma vez por turno recupera 4 pontos de Resistência.",
-    "custoHabilidade": 1
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
   },
   {
     "nome": "Odisseu",
@@ -31,7 +33,8 @@ const CARTAS = [
     "resistencia": 14,
     "combate": 14,
     "efeito": "Uma vez por turno anula a próxima Maldição do oponente.",
-    "custoHabilidade": 2
+    "custoHabilidade": 2,
+    "tipoEncantamento": null
   },
   {
     "nome": "Sigurd",
@@ -42,7 +45,8 @@ const CARTAS = [
     "resistencia": 15,
     "combate": 17,
     "efeito": "Uma vez por turno prepara um bônus: se atacar um Monstro antes do fim do turno, dobra o dano desse ataque.",
-    "custoHabilidade": 2
+    "custoHabilidade": 2,
+    "tipoEncantamento": null
   },
   {
     "nome": "Joana d'Arc",
@@ -53,7 +57,8 @@ const CARTAS = [
     "resistencia": 17,
     "combate": 12,
     "efeito": "Uma vez por turno cura totalmente o seu combatente em campo.",
-    "custoHabilidade": 3
+    "custoHabilidade": 3,
+    "tipoEncantamento": null
   },
   {
     "nome": "Gilgamesh",
@@ -64,7 +69,8 @@ const CARTAS = [
     "resistencia": 19,
     "combate": 15,
     "efeito": "Uma vez por turno compra 1 carta do Baralho Arcano.",
-    "custoHabilidade": 1
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
   },
   {
     "nome": "Aquiles",
@@ -75,7 +81,8 @@ const CARTAS = [
     "resistencia": 15,
     "combate": 19,
     "efeito": "Uma vez por turno ataca duas vezes, com o dano de cada ataque reduzido à metade. Conta como o ataque do turno.",
-    "custoHabilidade": 2
+    "custoHabilidade": 2,
+    "tipoEncantamento": null
   },
   {
     "nome": "Atalanta",
@@ -86,7 +93,8 @@ const CARTAS = [
     "resistencia": 12,
     "combate": 16,
     "efeito": "Uma vez por turno causa 5 de dano direto ao oponente, ignorando combate.",
-    "custoHabilidade": 2
+    "custoHabilidade": 2,
+    "tipoEncantamento": null
   },
   {
     "nome": "Cu Chulainn",
@@ -97,7 +105,8 @@ const CARTAS = [
     "resistencia": 16,
     "combate": 17,
     "efeito": "Uma vez por turno: se for derrotado atacando antes do fim do turno, o combatente ativo do oponente também é destruído.",
-    "custoHabilidade": 1
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
   },
   {
     "nome": "Merlin",
@@ -108,7 +117,8 @@ const CARTAS = [
     "resistencia": 10,
     "combate": 10,
     "efeito": "Uma vez por turno olha as 3 cartas do topo do seu Baralho Arcano.",
-    "custoHabilidade": 1
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
   },
   {
     "nome": "Cthulhu",
@@ -119,7 +129,8 @@ const CARTAS = [
     "resistencia": 20,
     "combate": 16,
     "efeito": "Uma vez por turno o oponente descarta 2 cartas aleatórias da mão.",
-    "custoHabilidade": 2
+    "custoHabilidade": 2,
+    "tipoEncantamento": null
   },
   {
     "nome": "Fenrir",
@@ -130,7 +141,8 @@ const CARTAS = [
     "resistencia": 18,
     "combate": 19,
     "efeito": "Uma vez por turno destrói a carta de Domínio ativa no campo, seja de quem for.",
-    "custoHabilidade": 2
+    "custoHabilidade": 2,
+    "tipoEncantamento": null
   },
   {
     "nome": "Jörmungandr",
@@ -141,7 +153,8 @@ const CARTAS = [
     "resistencia": 19,
     "combate": 15,
     "efeito": "Uma vez por turno causa 3 de dano ao combatente ativo do oponente, e mais 3 no início de cada turno do dono dele até ele ser destruído.",
-    "custoHabilidade": 2
+    "custoHabilidade": 2,
+    "tipoEncantamento": null
   },
   {
     "nome": "Tífon",
@@ -152,7 +165,8 @@ const CARTAS = [
     "resistencia": 17,
     "combate": 18,
     "efeito": "Uma vez por turno retorna o combatente ativo do oponente para o Panteão dele.",
-    "custoHabilidade": 3
+    "custoHabilidade": 3,
+    "tipoEncantamento": null
   },
   {
     "nome": "Shoggoth",
@@ -163,7 +177,8 @@ const CARTAS = [
     "resistencia": 19,
     "combate": 12,
     "efeito": "Uma vez por turno ignora a vantagem elemental do oponente contra este combatente até o fim do turno.",
-    "custoHabilidade": 1
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
   },
   {
     "nome": "Surtur",
@@ -174,7 +189,8 @@ const CARTAS = [
     "resistencia": 16,
     "combate": 20,
     "efeito": "Uma vez por turno causa 10 de dano a todos os combatentes ativos em campo, incluindo o seu.",
-    "custoHabilidade": 3
+    "custoHabilidade": 3,
+    "tipoEncantamento": null
   },
   {
     "nome": "Wendigo",
@@ -185,7 +201,8 @@ const CARTAS = [
     "resistencia": 14,
     "combate": 16,
     "efeito": "Uma vez por turno rouba até 2 de Mana do oponente.",
-    "custoHabilidade": 1
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
   },
   {
     "nome": "Nyarlathotep",
@@ -196,7 +213,8 @@ const CARTAS = [
     "resistencia": 15,
     "combate": 14,
     "efeito": "Uma vez por turno revela as Maldições viradas para baixo do oponente e destrói uma escolhida.",
-    "custoHabilidade": 2
+    "custoHabilidade": 2,
+    "tipoEncantamento": null
   },
   {
     "nome": "Minotauro",
@@ -207,7 +225,8 @@ const CARTAS = [
     "resistencia": 18,
     "combate": 15,
     "efeito": "Uma vez por turno impede o combatente ativo do oponente de usar a própria Habilidade neste turno.",
-    "custoHabilidade": 2
+    "custoHabilidade": 2,
+    "tipoEncantamento": null
   },
   {
     "nome": "Quimera",
@@ -218,7 +237,8 @@ const CARTAS = [
     "resistencia": 16,
     "combate": 17,
     "efeito": "Uma vez por turno ganha +2 de Combate neste turno se o combatente ativo do oponente for do elemento Terra.",
-    "custoHabilidade": 1
+    "custoHabilidade": 1,
+    "tipoEncantamento": null
   },
   {
     "nome": "Trono de Camelot",
@@ -229,7 +249,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Enquanto ativo, todos os Heróis em campo ganham +3 de Combate. Quando este Domínio for destruído, o dono compra 1 carta.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Fenda de R'lyeh",
@@ -240,7 +261,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Enquanto ativo, todos os Monstros em campo ganham +4 de Resistência. No início de cada turno, os dois jogadores descartam 1 carta aleatória da mão.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Vulcão Primordial",
@@ -251,7 +273,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Enquanto ativo, combatentes de Fogo em campo ganham +3 de Combate; combatentes de Vento em campo perdem 2 de Resistência.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Templo de Atlântida",
@@ -262,7 +285,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Sempre que um combatente de Água usar a Habilidade, o feiticeiro dono desse combatente recupera 1 de Mana.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Cânion dos Ventos",
@@ -273,7 +297,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Sempre que um combatente de Vento atacar e sobreviver, ele retorna automaticamente para o Panteão do dono.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Jardins Suspensos",
@@ -284,7 +309,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Enquanto ativo, combatentes de Terra recebem 3 a menos de dano. Quando um combatente de Terra for destruído, o dono deste Domínio ganha 4 de Mana.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Tomo do Oráculo",
@@ -295,7 +321,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Compre 2 cartas do Baralho Arcano.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Pacto de Sangue",
@@ -306,7 +333,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Sacrifique 5 pontos de Resistência do seu combatente; se sobreviver, ganha +6 de Combate até o fim do turno.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Visão do Olho Que Tudo Vê",
@@ -317,7 +345,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "O oponente revela a mão. Escolha uma carta de Maldição ou Encantamento de lá e descarte.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Ressurreição Arcana",
@@ -328,7 +357,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Escolha uma carta da sua Pilha de Descarte e coloque na mão.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Transmutação Elemental",
@@ -339,7 +369,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Escolha uma Natureza Elemental diferente da atual para o seu combatente, até o início do seu próximo turno.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Desintegração de Realidade",
@@ -350,7 +381,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Destrua a carta de Domínio ativa no campo.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Vórtice Dimensional",
@@ -361,7 +393,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Retorne o combatente ativo do oponente para o Panteão dele.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Valhalla",
@@ -372,7 +405,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Quando um Herói for derrotado, ele retorna para o Panteão do dono em vez da Pilha de Descarte.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Fosso de Tártaro",
@@ -383,7 +417,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Enquanto ativo, todo Monstro em campo ganha +3 de Combate. Nenhuma carta pode ser recuperada da Pilha de Descarte.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Oceano Primordial",
@@ -394,7 +429,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "No início do turno, revela a carta do topo do próprio Baralho. Se for de Água ou Encantamento, compra de graça.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Céus de Valíria",
@@ -405,7 +441,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Heróis de Fogo ou Vento ignoram desvantagem elemental. Sempre que atacam, o oponente descarta o topo do baralho.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Clarividência Divina",
@@ -416,7 +453,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Revele as 3 cartas do topo do baralho do oponente. Descarte 1 e devolva as outras 2.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Bênção de Yggdrasil",
@@ -427,7 +465,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Compre 2 cartas. Se ficar com 1 ou 0 na mão, compre mais 1.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Fúria Titânica",
@@ -438,7 +477,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Ganha +8 de Combate neste turno. Na Fase Final deste turno, sofre -4 de Resistência permanente.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Troca Equivalente",
@@ -449,7 +489,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Escolha até 3 cartas da mão para embaralhar no baralho. Compre a mesma quantidade.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Exílio Dimensional",
@@ -460,7 +501,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Envie o combatente ativo do oponente para a Pilha de Descarte. Ele invoca outro de graça.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Chamado do Além",
@@ -471,7 +513,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Escolha uma Maldição da sua Pilha de Descarte e coloque na mão.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Purificação Arcana",
@@ -482,7 +525,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Revele as Maldições do oponente. Destrua até duas delas.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Manto da Natureza",
@@ -493,7 +537,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "O combatente ganha +5 de Resistência permanente e imunidade a Habilidades de Mana inimigas.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Escudo de Gelo Absoluto",
@@ -504,7 +549,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "O ataque é completamente anulado e o atacante perde a Natureza Elemental até o fim do turno.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Espelho das Ilusões",
@@ -515,7 +561,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "O dano deste combate é redirecionado para o atacante em vez de atingir o seu combatente.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Areias Movediças",
@@ -526,7 +573,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "O combatente invocado pelo oponente entra em campo com -5 de Resistência permanente.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Roubo de Essência",
@@ -537,7 +585,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Quando o oponente ativar uma Habilidade, roube a Mana gasta.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Praga da Ferrugem",
@@ -548,7 +597,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "O Equipamento jogado é destruído antes do efeito. O oponente perde 1 de Mana. (Não implementado.)",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Vínculo Sombrio",
@@ -559,7 +609,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "O Combate do atacante é reduzido para exatamente 10 até o fim do turno.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Nevoeiro do Pânico",
@@ -570,7 +621,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "O oponente descarta a carta comprada no início do turno e compra a do fundo do baralho.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Barreira de Vento Cortante",
@@ -581,7 +633,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "O ataque é negado e o atacante retorna para o Panteão do dono.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Retribuição Kármica",
@@ -592,7 +645,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "O dano deste combate é redirecionado para o atacante em vez de atingir o seu combatente.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Aperto da Múmia",
@@ -603,7 +657,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "O combatente invocado pelo oponente entra com -5 de Resistência e -3 de Combate, permanentemente.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Mente Fraturada",
@@ -614,7 +669,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Quando o oponente comprar carta por um efeito, ele descarta a carta de maior Custo de Mana da mão.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Amnésia Mágica",
@@ -625,7 +681,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Quando o oponente ativar uma Habilidade, o combatente dele fica impedido de usar Habilidade de novo neste turno.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Fio do Destino Cortado",
@@ -636,7 +693,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Quando o oponente ativar uma Habilidade, inverte o sinal dos bônus e penalidades ativos no combatente dele (ex: +4 vira -4).",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Rebote Arcano",
@@ -647,7 +705,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Redireciona o próximo feitiço do oponente para o combatente dele. (Não implementado.)",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Caixa de Pandora",
@@ -658,7 +717,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Quando você tiver um Domínio ou Combatente destruído, o oponente descarta 3 cartas aleatórias da mão.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": null
   },
   {
     "nome": "Apoio Incondicional",
@@ -669,7 +729,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Escolha o seu Combatente em campo e 1 no Panteão. Se um deles for alvo de um ataque ou de um efeito de carta do oponente, você pode dividir o dano da batalha igualmente entre os dois. (Não implementado.)",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Simples"
   },
   {
     "nome": "Oásis do Saara",
@@ -680,7 +741,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Descarte 1 carta da mão ao jogar. Enquanto em campo, ganha +1 de Mana por turno.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Contínuo"
   },
   {
     "nome": "Geleiras do Ártico",
@@ -691,7 +753,8 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Perca 3 Pontos de Vida ao jogar. Enquanto em campo, ganha +1 de Mana por turno.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Contínuo"
   },
   {
     "nome": "Selva Amazônica",
@@ -702,6 +765,7 @@ const CARTAS = [
     "resistencia": null,
     "combate": null,
     "efeito": "Seu combatente em campo perde 2 de Combate e 2 de Resistência, permanentemente, ao jogar. Enquanto em campo, ganha +2 de Mana por turno.",
-    "custoHabilidade": null
+    "custoHabilidade": null,
+    "tipoEncantamento": "Contínuo"
   }
 ];

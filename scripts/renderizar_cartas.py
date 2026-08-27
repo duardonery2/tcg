@@ -72,6 +72,11 @@ def _val(row, col):
 
 def tipo_linha(row):
     partes = [row["Tipo"]]
+    tipo_encantamento = _val(row, "Tipo de Encantamento")
+    if tipo_encantamento and tipo_encantamento != "Simples":
+        # "Simples" e o Encantamento de sempre — so vale marcar na carta
+        # quando for algo diferente disso (Contínuo, Equipamento).
+        partes.append(tipo_encantamento)
     elemento = row["Elemento"]
     if elemento and elemento != "-":
         partes.append(elemento)

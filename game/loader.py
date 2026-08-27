@@ -18,7 +18,7 @@ import pandas as pd
 
 from .components import (
     AbilityCost, CardInfo, Combatente, CombatStats, Elemento, Location,
-    ManaCost, Owner, Tipo, Zona,
+    ManaCost, Owner, Tipo, TipoEncantamento, Zona,
 )
 from .ecs import World
 
@@ -41,6 +41,12 @@ _ELEMENTO_MAP = {
     "Terra": Elemento.TERRA,
     "Vento": Elemento.VENTO,
     "-": Elemento.NENHUM,
+}
+
+_TIPO_ENCANTAMENTO_MAP = {
+    "Simples": TipoEncantamento.SIMPLES,
+    "Equipamento": TipoEncantamento.EQUIPAMENTO,
+    "Contínuo": TipoEncantamento.CONTINUO,
 }
 
 COMBATENTES = {Tipo.HEROI, Tipo.MONSTRO}
@@ -76,9 +82,12 @@ def carregar_csv_para_jogador(
         tipo = _TIPO_MAP[row["Tipo"]]
         elemento = _ELEMENTO_MAP.get(row["Elemento"], Elemento.NENHUM)  # elementos compostos (ex. "Fogo/Vento") caem em NENHUM
 
+        tipo_encantamento = _TIPO_ENCANTAMENTO_MAP.get(row.get("Tipo de Encantamento"))
+
         eid = world.create_entity()
         world.add_component(eid, CardInfo(nome=row["Nome"], tipo=tipo, elemento=elemento,
-                                           efeito_texto=row["Efeito / Habilidade"]))
+                                           efeito_texto=row["Efeito / Habilidade"],
+                                           tipo_encantamento=tipo_encantamento))
         world.add_component(eid, ManaCost(valor=int(row["Custo de Mana"])))
         world.add_component(eid, Owner(player_id=player_id))
         owner_map[eid] = player_id

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 from .components import (
     AbilityCost, AttackedThisTurn, CardInfo, Fase, FaceDown, Location,
-    ManaCost, Zona,
+    ManaCost, TipoEncantamento, Zona,
 )
 from .deck import Deck
 from .events import (
@@ -169,22 +169,11 @@ class ActivateDomainAction:
         ctrl.effects.executar(ctrl, info.nome, self.player_id, self.card)
 
 
-# "Encantamentos Contínuos" (GAME_DESIGN.md) — em vez de resolver e ir pra
-# Pilha de Descarte como todo Encantamento normal, ficam em campo (num slot
-# de magia, igual Domínio/Maldição) enquanto o efeito passivo de +Mana por
-# turno estiver ativo. Custo de Mana 0 de propósito — o "custo" real é o
-# sacrifício pago no próprio efeito (descarte, vida, POW/RES). Não usa um
-# campo novo no CSV: o tipo continua "Encantamento", só o NOME está nesta
-# lista — mesmo padrão de tabela-por-nome já usado por
-# EFFECTS/registrar_gatilho_maldicao, sem mexer no schema do CSV/loader.
-ENCANTAMENTOS_CONTINUOS = {"Oásis do Saara", "Geleiras do Ártico", "Selva Amazônica"}
-
-
 @dataclass
 class PlayEnchantmentAction:
     """Fase Tatica: joga um Encantamento da mao. Resolve na hora e vai pra
-    Pilha de Descarte — exceto os "Contínuos" (ENCANTAMENTOS_CONTINUOS), que
-    ficam em campo num slot de magia em vez de serem descartados."""
+    Pilha de Descarte — exceto os Tipo de Encantamento CONTINUO (GAME_DESIGN.md),
+    que ficam em campo num slot de magia em vez de serem descartados."""
     player_id: int
     card: int
     slot: int | None = None
@@ -196,7 +185,7 @@ class PlayEnchantmentAction:
             raise AcaoInvalida("Essa carta nao esta na mao desse jogador.")
 
         info = ctrl.world.get_component(self.card, CardInfo)
-        continuo = info.nome in ENCANTAMENTOS_CONTINUOS
+        continuo = info.tipo_encantamento is TipoEncantamento.CONTINUO
         lado = ctrl.board.lado(self.player_id)
         if continuo and self.slot is None and not lado.slots_livres():
             raise AcaoInvalida("Não há slot de magia livre (limite de 5) pra jogar este Encantamento Contínuo.")

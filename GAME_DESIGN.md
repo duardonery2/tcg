@@ -107,15 +107,18 @@ As 64 cartas do Baralho Arcano e do Panteão usam um vocabulário mecânico comu
 | Invocar um Combatente | Fase de Invocação | Custo de Mana da carta | qualquer Herói/Monstro |
 | Ativar a Habilidade de um Combatente ("Habilidade de Mana") | Fase Principal ou de Batalha, 1x/turno | Custo de Habilidade (losango) | Rei Arthur, Surtur, ... |
 | Ativar um Domínio | Fase Principal | Custo de Mana da carta (destrói o Domínio anterior) | Vulcão Primordial, Valhalla |
-| Jogar um Encantamento | Fase Principal | Custo de Mana da carta | Tomo do Oráculo, Pacto de Sangue |
-| Jogar um Encantamento Contínuo | Fase Principal | Nenhuma Mana — um sacrifício próprio, no lugar (ver abaixo) | Oásis do Saara, Geleiras do Ártico, Selva Amazônica |
+| Jogar um Encantamento (Tipo de Encantamento: Simples ou Equipamento) | Fase Principal | Custo de Mana da carta | Tomo do Oráculo, Pacto de Sangue |
+| Jogar um Encantamento (Tipo de Encantamento: Contínuo) | Fase Principal | Nenhuma Mana — um sacrifício próprio, no lugar (ver abaixo) | Oásis do Saara, Geleiras do Ártico, Selva Amazônica |
 | Baixar uma Maldição virada para baixo | Fase Principal | Nenhum (grátis) | qualquer Maldição |
 | Revelar/ativar uma Maldição já setada | A qualquer momento no turno do oponente | Custo de Mana da carta | qualquer Maldição |
 | Declarar um ataque | Fase de Batalha, 1x/turno por combatente, nunca no 1º turno da partida | — | — |
 
 > **Maldição: o custo é pago na ativação, não ao baixar.** Setar uma Maldição virada para baixo é grátis — ela só cobra o Custo de Mana impresso na carta no momento em que é revelada/ativada. Isso significa que dá pra baixar uma Maldição mesmo sem mana nenhuma, mas se não houver mana disponível quando chegar a hora de ativá-la, a ativação falha (a carta continua virada para baixo em campo até haver mana ou até ser destruída por outro efeito).
 
-> **Encantamento Contínuo:** ao contrário de um Encantamento normal (resolve na hora e vai pra Pilha de Descarte), fica em campo — num slot de magia, disputando o mesmo limite de 5 com Domínio/Maldição. Tem Custo de Mana **0**: o preço de entrada é um sacrifício pago na hora de jogar (descartar carta, perder Pontos de Vida, ou reduzir permanentemente o POW/RES do próprio combatente em campo — varia por carta), e o benefício é um bônus de **Mana por turno** enquanto continuar em campo (some se a carta for destruída). Vários podem estar ativos ao mesmo tempo, e os bônus se somam.
+> **Tipo de Encantamento:** toda carta Tipo=Encantamento agora carrega uma subcategoria própria (coluna "Tipo de Encantamento" no CSV) com 3 valores possíveis:
+> - **Simples** — o Encantamento de sempre: paga o Custo de Mana da carta, resolve o efeito na hora e vai pra Pilha de Descarte. É o valor de todas as 16 cartas de Encantamento que já existiam antes desta subcategoria ser criada (Tomo do Oráculo, Pacto de Sangue, etc.).
+> - **Contínuo:** ao contrário do Simples, fica em campo — num slot de magia, disputando o mesmo limite de 5 com Domínio/Maldição. Tem Custo de Mana **0**: o preço de entrada é um sacrifício pago na hora de jogar (descartar carta, perder Pontos de Vida, ou reduzir permanentemente o POW/RES do próprio combatente em campo — varia por carta), e o benefício é um bônus de **Mana por turno** enquanto continuar em campo (some se a carta for destruída). Vários podem estar ativos ao mesmo tempo, e os bônus se somam. Cartas: Oásis do Saara, Geleiras do Ártico, Selva Amazônica.
+> - **Equipamento** — reservado pra cartas futuras, ainda sem nenhuma carta implementada. Várias cartas já citam "Equipamento" no próprio texto (Gilgamesh, Praga da Ferrugem, Desintegração de Realidade, Chamado do Além) sem que exista, hoje, nenhuma carta desse Tipo de Encantamento nos dados — a categoria existe pra quando isso for criado.
 
 > **Nota de consistência:** quatro cartas já citavam "Habilidade de Mana" como um termo do jogo antes de existir uma regra formal para ela — **Templo de Atlântida** (dispara quando um combatente de Água usa uma), **Minotauro** e **Roubo de Essência** (impedem/roubam o uso de uma) e **Amnésia Mágica** (faz uma falhar). A regra da seção "Habilidades dos Combatentes" acima (Custo de Habilidade, losango cinza) formaliza exatamente esse termo: "usar uma Habilidade de Mana" = ativar a habilidade impressa de um combatente pagando seu Custo de Habilidade.
 

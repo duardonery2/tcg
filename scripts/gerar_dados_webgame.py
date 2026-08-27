@@ -26,6 +26,7 @@ for _, r in df.iterrows():
         "combate": int(r["Combate"]) if combatente else None,
         "efeito": r["Efeito / Habilidade"],
         "custoHabilidade": int(r["Custo de Habilidade"]) if (combatente and pd.notna(r["Custo de Habilidade"])) else None,
+        "tipoEncantamento": r["Tipo de Encantamento"] if pd.notna(r.get("Tipo de Encantamento")) and r["Tipo de Encantamento"] else None,
     })
 
 js = "// GERADO por scripts/gerar_dados_webgame.py — nao editar a mao.\n"

@@ -23,6 +23,20 @@ class Tipo(Enum):
     MALDICAO = "Maldição"
 
 
+class TipoEncantamento(Enum):
+    """Subcategoria só de cartas Tipo.ENCANTAMENTO — GAME_DESIGN.md,
+    'Vocabulário de Mecânicas'. SIMPLES é o Encantamento de sempre (resolve
+    na hora, vai pra Pilha de Descarte); CONTINUO fica em campo concedendo
+    um bônus de Mana por turno em troca de um sacrifício (Oásis do Saara,
+    Geleiras do Ártico, Selva Amazônica); EQUIPAMENTO é reservado pra cartas
+    futuras — várias cartas já citam "Equipamento" (Gilgamesh, Praga da
+    Ferrugem, Desintegração de Realidade, Chamado do Além) sem nenhuma
+    existir ainda nos dados."""
+    SIMPLES = "Simples"
+    EQUIPAMENTO = "Equipamento"
+    CONTINUO = "Contínuo"
+
+
 class Elemento(Enum):
     FOGO = "Fogo"
     AGUA = "Água"
@@ -75,6 +89,7 @@ class CardInfo:
     tipo: Tipo
     elemento: Elemento
     efeito_texto: str = ""
+    tipo_encantamento: TipoEncantamento | None = None  # só preenchido quando tipo is Tipo.ENCANTAMENTO
 
 
 @dataclass
