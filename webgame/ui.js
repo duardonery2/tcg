@@ -563,7 +563,18 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
   // inteira, que esticaria uma revelação de Maldição) — usado quando
   // elCartaAtual não tem a carta mapeada (Maldição do OPONENTE, nunca
   // exposta em cartaPreview antes de revelar — ver elSlot/renderLado).
-  function rectSlotDeMagia(playerId) { return rectDe(`#${containerIdDe(playerId)} .linha-magia .slot`); }
+  // A linha de magia SEMPRE renderiza os 5 slots (mesmo vazios — ver
+  // renderLado/board.js, TCG.N_SLOTS_MAGIA), em ordem fixa de índice, então
+  // `slotIndex` (0-4) mira o slot exato onde a carta VAI cair — o mesmo
+  // índice que TCG.Board.colocarMagia devolveu/vai usar (ver
+  // dominioAtivado/encantamentoJogado/maldicaoColocada abaixo), nunca
+  // "o primeiro slot da linha" — que quase sempre seria o slot ERRADO
+  // (colocarMagia preenche da DIREITA pra esquerda, ver board.js).
+  function rectSlotDeMagia(playerId, slotIndex) {
+    const slots = document.querySelectorAll(`#${containerIdDe(playerId)} .linha-magia .slot`);
+    const alvo = slots[slotIndex];
+    return alvo ? alvo.getBoundingClientRect() : null;
+  }
   function rectInfoLado(playerId) { return rectDe(`#${containerIdDe(playerId)} .info-lado`); }
   function rectMaoLocal() { return rectDe("#mao-jogador"); }
   // destino da animação de compra: um retângulo do TAMANHO de uma carta
@@ -933,14 +944,20 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
     const origem = origemNaMaoDe(e.carta, e.playerId);
     enfileirarFx((avancar) => {
       const duracao = tocarSom("dominio");
-      fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar, duracao);
+      fxSpawnGhost(origem, rectSlotDeMagia(e.playerId, e.slot), e.carta.arquivo, avancar, duracao);
     });
   });
   game.bus.on("encantamentoJogado", (e) => {
     const origem = origemNaMaoDe(e.carta, e.playerId);
+    // e.slot vem null quando é um Encantamento Simples (resolve na hora e
+    // vai pro Descarte, nunca ocupa slot de magia — ver actions.js); nesse
+    // caso não há pra onde voar (rect null), fxSpawnGhost já avança a fila
+    // na hora (ver seu próprio guard-clause) — sem esse evento nem ganhar
+    // um efeito visual de "jogar", só o log mesmo.
     enfileirarFx((avancar) => {
       const duracao = tocarSom("encantamento");
-      fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar, duracao);
+      const destino = e.slot !== null ? rectSlotDeMagia(e.playerId, e.slot) : null;
+      fxSpawnGhost(origem, destino, e.carta.arquivo, avancar, duracao);
     });
   });
 
@@ -954,12 +971,13 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
       const origem = origemNaMaoDe(e.carta, e.playerId);
       enfileirarFx((avancar) => {
         const duracao = tocarSom("setar");
-        fxSpawnGhost(origem, rectSlotDeMagia(e.playerId), e.carta.arquivo, avancar, duracao);
+        fxSpawnGhost(origem, rectSlotDeMagia(e.playerId, e.slot), e.carta.arquivo, avancar, duracao);
       });
     } else {
+      const slots = document.querySelectorAll(`#${containerIdDe(e.playerId)} .linha-magia .slot`);
       enfileirarFx((avancar) => {
         const duracao = tocarSom("setar");
-        fxPulso(document.querySelector(`#${containerIdDe(e.playerId)} .linha-magia .slot`), "destaque", avancar, false, duracao);
+        fxPulso(slots[e.slot], "destaque", avancar, false, duracao);
       });
     }
   });
@@ -972,7 +990,11 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
   // tamanho certo dentro da linha de magia dele (rectSlotDeMagia).
   game.bus.on("maldicaoAtivada", (e) => {
     const elemento = elCartaAtual.get(e.carta);
-    const rect = elemento ? elemento.getBoundingClientRect() : rectSlotDeMagia(e.playerId);
+    // carta já setada há um ou mais turnos — pega o índice de onde ela
+    // REALMENTE está agora em vez de supor (evento não carrega slot, e
+    // "primeiro slot livre" mudou de convenção — ver TCG.Board.colocarMagia).
+    const slotAtual = game.board[e.playerId].magia.indexOf(e.carta);
+    const rect = elemento ? elemento.getBoundingClientRect() : rectSlotDeMagia(e.playerId, slotAtual);
     enfileirarFx((avancar) => {
       const duracao = tocarSom("revelarMaldicao");
       fxSpawnFlip(rect, e.carta.arquivo, avancar, duracao);

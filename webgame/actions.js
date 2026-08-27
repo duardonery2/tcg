@@ -163,10 +163,18 @@ TCG.acoes = {
       // mesmo que ela volte ao Panteao sem ser destruida depois.
       const alvoEquipado = equipamento ? lado.monstro : null;
 
-      game.bus.emit("encantamentoJogado", { playerId, carta });
+      // slot decidido JA AQUI (antes do efeito rodar) mesmo a carta só
+      // ocupando ele de verdade mais abaixo — é o que a UI usa pra mirar a
+      // animação de voo no lugar certo (ver ui.js, "encantamentoJogado");
+      // nenhum efeito de carta mexe em slot de magia por conta própria
+      // (só colocarMagia/removerMagia fazem isso, ambos chamados só daqui),
+      // então esse valor não fica desatualizado até o colocarMagia abaixo.
+      const slotAlvo = ficaEmCampo ? (slot !== null ? slot : TCG.Board.proximoSlotLivre(lado)) : null;
+
+      game.bus.emit("encantamentoJogado", { playerId, carta, slot: slotAlvo });
       TCG.executarEfeito(game, carta.nome, playerId, carta);
       if (ficaEmCampo) {
-        TCG.Board.colocarMagia(lado, carta, slot);
+        TCG.Board.colocarMagia(lado, carta, slotAlvo);
         if (equipamento && alvoEquipado !== null) {
           TCG.registrarTrigger(game, {
             eventoTipo: "cartaDestruida",

@@ -14,6 +14,15 @@ TCG.Board = {
     return livres;
   },
 
+  // Próximo slot a ser ocupado quando ninguém pede um índice específico:
+  // sempre o mais à DIREITA ainda livre — mesma convenção da mão (ver
+  // rectProximoSlotDeMao em ui.js), pra a animação de voo (rectSlotDeMagia)
+  // ter garantia de mirar o mesmo lugar onde a carta realmente vai cair.
+  proximoSlotLivre(lado) {
+    const livres = TCG.Board.slotsLivres(lado);
+    return livres.length ? livres[livres.length - 1] : null;
+  },
+
   colocarMonstro(lado, carta) {
     if (lado.monstro !== null) throw new Error("Ja existe um combatente ativo neste lado do tabuleiro.");
     lado.monstro = carta;
@@ -27,9 +36,8 @@ TCG.Board = {
 
   colocarMagia(lado, carta, slot = null) {
     if (slot === null) {
-      const livres = TCG.Board.slotsLivres(lado);
-      if (livres.length === 0) throw new Error("Nao ha slot de magia livre (limite de 5).");
-      slot = livres[0];
+      slot = TCG.Board.proximoSlotLivre(lado);
+      if (slot === null) throw new Error("Nao ha slot de magia livre (limite de 5).");
     } else if (lado.magia[slot] !== null) {
       throw new Error(`Slot de magia ${slot} ja ocupado.`);
     }
