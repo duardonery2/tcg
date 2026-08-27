@@ -2,7 +2,7 @@
 """Renderiza uma carta PNG por linha do CSV, usando templates/card.css.
 Usa a arte em arts/<Nome>.png quando existe; senao deixa a janela de arte em branco.
 Cor da carta segue o elemento (Herói/Monstro), ou o tipo (Encantamento = verde,
-Maldição = roxo profundo, Domínio = cinza-escuro).
+Maldição = roxo profundo); Domínios ficam no pergaminho neutro padrao.
 """
 import os
 import shutil
@@ -28,7 +28,6 @@ PALETA_ELEMENTO = {
 PALETA_TIPO = {
     "Encantamento": ("#d7f6e2", "#5fce8c", "#1f8c53", "#0c4128"),  # verde
     "Maldição": ("#e6d9f6", "#9a5ed1", "#5a1e93", "#290c49"),      # roxo profundo
-    "Domínio": ("#5a5a60", "#38383d", "#1c1c1f", "#000000"),       # cinza-escuro
 }
 
 PAGE_STYLE = """
@@ -91,7 +90,7 @@ def paleta_da_carta(row):
     tipo = row["Tipo"]
     if tipo in COM_STATS:
         return PALETA_ELEMENTO.get(row["Elemento"])
-    return PALETA_TIPO.get(tipo)
+    return PALETA_TIPO.get(tipo)  # None para Domínio -> pergaminho neutro padrao
 
 
 def build_html(row, css, art_path):
