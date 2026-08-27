@@ -40,24 +40,45 @@ PAGE_STYLE = """
     padding: 0 5%; font-weight: 700; color: #201a10; white-space: nowrap;
   }
   .card__bar--name .card__bar-label { padding-right: 15%; }
+  /* Tipo/Elemento/Função dividem a mesma pílula abaixo da arte — fonte
+     menor que o nome pra caberem os 3 campos numa linha só. */
+  .card__bar--tipo .card__bar-label { font-size: 0.62em; letter-spacing: 0.01em; }
   .card__cost-badge { color: #f1efe6; font-weight: 700; font-size: 0.62em; }
   .card__text-content {
     box-sizing: border-box; height: 100%; padding: 6% 7%;
     display: flex; flex-direction: column;
-    color: #2a241a; font-size: 0.85em; line-height: 1.4;
+    color: #2a241a; font-size: 0.66em; line-height: 1.35;
   }
   .card__effect { display: flex; align-items: baseline; }
   .card__ability-badge { flex-shrink: 0; }
+  /* Efeito Secundário/Passivo: fonte ainda menor que o efeito principal —
+     só aparecem quando o CSV tem esses campos preenchidos (ver build_html). */
+  .card__effect-extra { margin-top: 0.5em; font-size: 0.88em; font-style: italic; color: #4a4030; }
+  .card__effect-extra b { font-style: normal; }
   .card__stats { margin-top: auto; padding-top: 10px; font-weight: 700; color: #5a4620; }
 """
 
 
+def _val(row, col):
+    """Le uma coluna do CSV como string, tratando NaN do pandas (celula
+    vazia) como string vazia — necessario pras colunas novas (Função,
+    Efeito Secundário, Efeito Passivo) que ainda estao em branco na maioria
+    das cartas."""
+    v = row.get(col, "")
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
+    return str(v).strip()
+
+
 def tipo_linha(row):
-    tipo = row["Tipo"]
+    partes = [row["Tipo"]]
     elemento = row["Elemento"]
     if elemento and elemento != "-":
-        return f"{tipo} — {elemento}"
-    return tipo
+        partes.append(elemento)
+    funcao = _val(row, "Função")
+    if funcao:
+        partes.append(funcao)
+    return " — ".join(partes)
 
 
 def paleta_da_carta(row):
@@ -100,6 +121,17 @@ def build_html(row, css, art_path):
             "</span>"
         )
 
+    # Efeito Secundário / Efeito Passivo (colunas novas do CSV) — em fonte
+    # reduzida, só aparecem quando preenchidos; nenhuma das 64 cartas atuais
+    # usa isso ainda, então isso fica invisível até uma carta futura preencher.
+    extra_html = ""
+    secundario = _val(row, "Efeito Secundário")
+    if secundario:
+        extra_html += f'<div class="card__effect-extra"><b>Secundário:</b> {secundario}</div>'
+    passivo = _val(row, "Efeito Passivo")
+    if passivo:
+        extra_html += f'<div class="card__effect-extra"><b>Passivo:</b> {passivo}</div>'
+
     return f"""<!doctype html>
 <html><head><meta charset="utf-8">
 <style>{css}</style>
@@ -113,12 +145,13 @@ def build_html(row, css, art_path):
         <div class="card__cost-badge">{custo}</div>
       </div>
       <div class="card__art" {art_style}></div>
-      <div class="card__bar">
+      <div class="card__bar card__bar--tipo">
         <p class="card__bar-label">{tipo}</p>
       </div>
       <div class="card__text">
         <div class="card__text-content">
           <div class="card__effect">{ability_badge}<span>{efeito}</span></div>
+          {extra_html}
           {stats_html}
         </div>
       </div>
