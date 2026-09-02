@@ -1,0 +1,23 @@
+# Só o relay (scripts/relay_core.py + relay_server.py + requirements.txt)
+# entra na imagem — ver Dockerfile. Tudo abaixo fica de fora pra manter o
+# build rápido e a imagem pequena, apesar do repo ter ~200MB de assets.
+arts/
+cards/
+sound/
+ref/
+templates/
+webgame/
+game/
+venv/
+.git/
+*.csv
+*.md
+*.png
+*.jpg
+*.jpeg
+
+# Scripts do relay LAN e de geração/teste de assets não precisam ir pro
+# deploy — só o que o Dockerfile copia explicitamente.
+scripts/*.py
+!scripts/relay_core.py
+!scripts/relay_server.py

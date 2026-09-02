@@ -1,0 +1,22 @@
+# Deploy do relay com código de sala (scripts/relay_server.py) no Fly.io.
+# `app` precisa ser único globalmente — troque antes do primeiro
+# `fly launch`/`fly deploy` se "tcg-relay" já estiver em uso.
+app = "tcg-relay"
+primary_region = "gru"
+
+[build]
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  # Sem [[http_service.checks]] de propósito: o servidor só entende o
+  # handshake de upgrade WebSocket (uma requisição HTTP GET comum em "/"
+  # recebe 426 Upgrade Required, não 2xx), então um health check HTTP
+  # comum marcaria a máquina como não-saudável. O Fly já verifica que a
+  # porta está aceitando conexões TCP por padrão.

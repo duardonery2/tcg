@@ -25,12 +25,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import http.server
-import json
 import socket
 import threading
 
-import websockets
 from websockets.asyncio.server import ServerConnection, serve
+
+from relay_core import Sala, bombear, enviar_guest_conectou, enviar_papel
 
 RAIZ_DO_REPO = __import__("pathlib").Path(__file__).resolve().parent.parent
 
@@ -62,42 +62,23 @@ def iniciar_servidor_estatico(porta: int) -> None:
     thread.start()
 
 
-class Sala:
+def papel_para(sala: Sala, ws: ServerConnection) -> str | None:
     """MVP: uma sala só por processo. A primeira conexão que chega vira o
     host, a segunda o guest; uma terceira é rejeitada. Nenhuma das duas
     pontas precisa saber a ordem de antemão — quem conecta primeiro que
     define (o jogador que vai hostear só precisa apertar "Hospedar" antes
     do outro apertar "Entrar")."""
-
-    def __init__(self) -> None:
-        self.host: ServerConnection | None = None
-        self.guest: ServerConnection | None = None
-
-    def papel_para(self, ws: ServerConnection) -> str | None:
-        if self.host is None:
-            self.host = ws
-            return "host"
-        if self.guest is None:
-            self.guest = ws
-            return "guest"
-        return None
-
-    def outra_ponta(self, ws: ServerConnection) -> ServerConnection | None:
-        if ws is self.host:
-            return self.guest
-        if ws is self.guest:
-            return self.host
-        return None
-
-    def desconectar(self, ws: ServerConnection) -> None:
-        if ws is self.host:
-            self.host = None
-        elif ws is self.guest:
-            self.guest = None
+    if sala.host is None:
+        sala.host = ws
+        return "host"
+    if sala.guest is None:
+        sala.guest = ws
+        return "guest"
+    return None
 
 
 async def tratar_conexao(ws: ServerConnection, sala: Sala) -> None:
-    papel = sala.papel_para(ws)
+    papel = papel_para(sala, ws)
     if papel is None:
         await ws.close(1013, "sala cheia (já há host e guest conectados)")
         return
@@ -105,17 +86,11 @@ async def tratar_conexao(ws: ServerConnection, sala: Sala) -> None:
     # o relay não entende nada de jogo, mas cada navegador precisa saber se
     # é o host (dono da simulação de verdade) ou o guest (espelho) — isso
     # não dá pra decidir sozinho no JS, só o relay sabe quem chegou primeiro.
-    await ws.send(json.dumps({"type": "papel", "papel": papel}))
+    await enviar_papel(ws, papel)
     if papel == "guest" and sala.host is not None:
-        await sala.host.send(json.dumps({"type": "guestConectou"}))
+        await enviar_guest_conectou(sala.host)
     try:
-        async for mensagem in ws:
-            destino = sala.outra_ponta(ws)
-            if destino is not None:
-                try:
-                    await destino.send(mensagem)
-                except websockets.exceptions.ConnectionClosed:
-                    pass  # a outra ponta já caiu; a própria iteração acima vai perceber e sair
+        await bombear(ws, sala)
     finally:
         sala.desconectar(ws)
         print(f"[relay] {papel} desconectado")
