@@ -173,8 +173,7 @@ TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal }) {
       }
     }
 
-    ws.addEventListener("message", (ev) => {
-      const msg = JSON.parse(ev.data);
+    function tratarMensagem(msg) {
       if (msg.type === "intent") tratarIntent(msg);
       else if (msg.type === "selecaoResposta") {
         const opcoesReais = pedidosPendentes.get(msg.requestId) || [];
@@ -184,13 +183,18 @@ TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal }) {
           .filter(Boolean);
         game.selection.resolver(msg.requestId, escolha);
       }
-    });
+    }
 
     // primeiro snapshot: o guest ainda não tem NADA desenhado certo até
     // aqui, não dá pra esperar o primeiro evento de jogo pra sincronizar.
     enviar({ type: "evento", tipo: "sincronizacaoInicial", payload: {}, estado: TCG.estadoCompletoPara(game, oponenteId) });
 
-    return null; // o host age sempre por TCG.acoes.* direto, não precisa de wrapper de ações
+    // o host age sempre por TCG.acoes.* direto, não precisa de wrapper de
+    // ações — só de receber intents/respostas de seleção do guest. Quem
+    // chama (webgame/match.js) é dono do único listener "message" do `ws`
+    // ao longo de toda a partida (várias trocas de duelo incluídas) e
+    // repassa cada mensagem recebida pra cá.
+    return { tratarMensagem };
   }
 
   // ---- papel: GUEST --------------------------------------------------
@@ -202,8 +206,11 @@ TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal }) {
   const opcoesPendentesLocais = new Map(); // "rede:N" -> cartas (já resolvidas/cacheadas)
   const prefixoRede = (id) => `rede:${id}`;
 
-  ws.addEventListener("message", (ev) => {
-    const msg = JSON.parse(ev.data);
+  // Quem chama (webgame/match.js) é dono do único listener "message" do
+  // `ws` ao longo de toda a partida e repassa cada mensagem recebida pra
+  // cá — necessário pra poder trocar de duelo (nova instância de rede,
+  // sem perder/duplicar listeners no mesmo WebSocket).
+  function tratarMensagem(msg) {
     if (msg.type === "evento") {
       aplicarSnapshot(msg.estado);
       if (msg.tipo !== "sincronizacaoInicial") game.bus.emit(msg.tipo, resolverPayloadRecebido(msg.payload));
@@ -218,7 +225,7 @@ TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal }) {
     } else if (msg.type === "erro") {
       console.warn("[rede] o host recusou uma ação:", msg.mensagem);
     }
-  });
+  }
 
   // Substitui TCG.acoes pro lado do guest: em vez de mutar o jogo direto
   // (que só o host pode fazer de verdade), manda a intenção pela rede e
@@ -236,6 +243,7 @@ TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal }) {
   };
 
   return {
+    tratarMensagem,
     acoes: acoesDoGuest,
     // Nem toda "selecaoPedida" que o guest vê veio da rede: algumas são só
     // UI local (ex.: solicitarInvocacao em ui.js chama game.selection.
