@@ -6,6 +6,16 @@ on:
     branches:
       - main
       - master
+    # Só redeploya o relay quando algo que ele de fato usa muda — um push
+    # que só mexe em webgame/ (front-end, servido pelo GitHub Pages) não
+    # deveria derrubar as conexões WebSocket de partidas em andamento.
+    paths:
+      - "scripts/relay_core.py"
+      - "scripts/relay_server.py"
+      - "scripts/requirements.txt"
+      - "Dockerfile"
+      - "fly.toml"
+      - ".github/workflows/fly-deploy.yml"
 jobs:
   deploy:
     name: Deploy app
