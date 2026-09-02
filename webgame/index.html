@@ -51,7 +51,18 @@
     <h2 id="fim-titulo"></h2>
     <p id="fim-motivo"></p>
     <p id="fim-resumo"></p>
+    <p id="fim-placar" style="display:none"></p>
     <button class="acao" id="btn-nova-partida">Nova Partida</button>
+    <button class="acao" id="btn-proximo-duelo" style="display:none">Próximo Duelo</button>
+  </div>
+
+  <!-- Distinto de #overlay-fim (fim de UM duelo): só aparece quando a
+       PARTIDA inteira termina (alguém chega a TCG.VITORIAS_PARA_VENCER_PARTIDA
+       vitórias, ver webgame/match.js) — nunca os dois ativos ao mesmo tempo. -->
+  <div id="overlay-fim-partida">
+    <h2 id="partida-titulo"></h2>
+    <p id="partida-placar"></p>
+    <button class="acao" id="btn-voltar-menu">Voltar ao Menu</button>
   </div>
 
   <div id="overlay-descarte">

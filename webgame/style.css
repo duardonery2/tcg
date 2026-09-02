@@ -236,13 +236,13 @@ button.acao:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Ocupam so a coluna do tabuleiro (grid-column 1, todas as linhas) — nunca
    a coluna do painel de preview/log, pra dar pra ver a carta em destaque
    enquanto escolhe. */
-#overlay-selecao, #overlay-fim, #overlay-descarte {
+#overlay-selecao, #overlay-fim, #overlay-descarte, #overlay-fim-partida {
   grid-column: 1; grid-row: 1 / -1;
   background: rgba(0,0,0,0.82); border-radius: 10px;
   display: none; align-items: center; justify-content: center; flex-direction: column; gap: 18px;
   z-index: 40; padding: 24px;
 }
-#overlay-selecao.ativo, #overlay-fim.ativo, #overlay-descarte.ativo { display: flex; }
+#overlay-selecao.ativo, #overlay-fim.ativo, #overlay-descarte.ativo, #overlay-fim-partida.ativo { display: flex; }
 #overlay-selecao .opcoes, #overlay-fim .resumo, #overlay-descarte .opcoes {
   display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; max-width: 100%;
 }
@@ -257,8 +257,9 @@ button.acao:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 #overlay-selecao .opcoes img:hover, #overlay-selecao .opcoes img:focus-visible,
 #overlay-descarte .opcoes img:hover, #overlay-descarte .opcoes img:focus-visible { transform: scale(1.5); z-index: 30; position: relative; }
-#overlay-fim h2 { color: var(--accent); font-size: 2rem; margin: 0; }
-#overlay-fim p { color: var(--text-muted); }
+#overlay-fim h2, #overlay-fim-partida h2 { color: var(--accent); font-size: 2rem; margin: 0; }
+#overlay-fim p, #overlay-fim-partida p { color: var(--text-muted); }
+#fim-placar, #partida-placar { color: var(--text); font-size: 1.05rem; }
 
 .acao-invalida { color: var(--perigo); }
 

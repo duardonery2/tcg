@@ -75,17 +75,26 @@ def parear_por_codigo(page_host, page_guest):
     page_guest.wait_for_timeout(1000)
 
 
-def forcar_fim_de_duelo(page_host, perdedor):
+def forcar_fim_de_duelo(page_host, page_guest, perdedor):
     """Só o HOST pode mexer no `game` de verdade (ver rede.js) — força a
     vida do `perdedor` a 0 e chama TCG.checarFimDeJogo, exatamente o
-    gatilho que webgame/match.js escuta pra contar a vitória."""
+    gatilho que webgame/match.js escuta pra contar a vitória. Numa jogada
+    de verdade o re-render viria de dentro de tentar()/da fila de FX (ver
+    ui.js) — como este teste pula direto pro estado final sem passar por
+    nenhuma ação real, chama window.ui.render() manualmente nos dois
+    lados pra refletir o overlay de fim (host de imediato; guest só
+    depois que o snapshot chegar pela rede)."""
     page_host.evaluate(
         """(perdedor) => {
             window.game.players[perdedor].vida = 0;
             TCG.checarFimDeJogo(window.game);
+            window.ui.render();
         }""",
         perdedor,
     )
+    page_host.wait_for_timeout(300)
+    page_guest.wait_for_timeout(300)
+    page_guest.evaluate("() => window.ui.render()")
 
 
 def testar_vitorias_e_vida_carregada_entre_duelos(browser):
@@ -104,7 +113,7 @@ def testar_vitorias_e_vida_carregada_entre_duelos(browser):
 
         # Duelo 1: guest (playerId 2) perde. Vencedor = host (playerId 1).
         vida_vencedor_no_fim = page_host.evaluate("() => (window.game.players[1].vida = 13)")
-        forcar_fim_de_duelo(page_host, perdedor=2)
+        forcar_fim_de_duelo(page_host, page_guest, perdedor=2)
         page_host.wait_for_timeout(500)
         page_guest.wait_for_timeout(500)
 
@@ -115,6 +124,15 @@ def testar_vitorias_e_vida_carregada_entre_duelos(browser):
 
         vida_carregada_host = page_host.evaluate("() => window.partida.vidaCarregada")
         assert vida_carregada_host["1"] == vida_vencedor_no_fim or vida_carregada_host[1] == vida_vencedor_no_fim, vida_carregada_host
+
+        # UI: overlay de fim de DUELO (não de partida) mostra o placar
+        # corrente, e só o HOST vê "Próximo Duelo" habilitado.
+        assert page_host.eval_on_selector("#overlay-fim", "el => el.classList.contains('ativo')")
+        assert not page_host.eval_on_selector("#overlay-fim-partida", "el => el.classList.contains('ativo')")
+        placar_texto_host = page_host.eval_on_selector("#fim-placar", "el => el.textContent")
+        assert "1" in placar_texto_host and "0" in placar_texto_host, placar_texto_host
+        assert page_host.eval_on_selector("#btn-proximo-duelo", "el => el.style.display !== 'none'")
+        assert page_guest.eval_on_selector("#btn-proximo-duelo", "el => el.style.display === 'none'")
 
         # Host inicia o duelo 2 (ver ui.js/match.js: só o host decide).
         page_host.evaluate("() => window.partida.iniciarProximoDuelo()")
@@ -138,7 +156,7 @@ def testar_vitorias_e_vida_carregada_entre_duelos(browser):
 
         # Duelo 2: host (playerId 1) perde -> vitória 1x1, sem fim de partida ainda.
         vida_vencedor_duelo2 = page_host.evaluate("() => (window.game.players[2].vida = 7)")
-        forcar_fim_de_duelo(page_host, perdedor=1)
+        forcar_fim_de_duelo(page_host, page_guest, perdedor=1)
         page_host.wait_for_timeout(500)
         page_guest.wait_for_timeout(500)
         placar_host = page_host.evaluate("() => window.partida.vitoriasDuelo")
@@ -151,7 +169,7 @@ def testar_vitorias_e_vida_carregada_entre_duelos(browser):
             page_host.evaluate("() => window.partida.iniciarProximoDuelo()")
             page_host.wait_for_timeout(800)
             page_guest.wait_for_timeout(800)
-            forcar_fim_de_duelo(page_host, perdedor=1)
+            forcar_fim_de_duelo(page_host, page_guest, perdedor=1)
             page_host.wait_for_timeout(500)
             page_guest.wait_for_timeout(500)
 
@@ -159,6 +177,20 @@ def testar_vitorias_e_vida_carregada_entre_duelos(browser):
         fim_guest = page_guest.evaluate("() => window.partida.fimDePartida")
         assert fim_host and (fim_host.get("vencedor") == 2), fim_host
         assert fim_guest == fim_host, f"host e guest deveriam concordar sobre o fim da partida: {fim_host} vs {fim_guest}"
+
+        # UI: overlay de fim de PARTIDA (não o de fim de duelo) em cada
+        # lado, com o resultado certo do ponto de vista de cada um.
+        for pg, venceu in [(page_host, False), (page_guest, True)]:
+            assert pg.eval_on_selector("#overlay-fim-partida", "el => el.classList.contains('ativo')")
+            assert not pg.eval_on_selector("#overlay-fim", "el => el.classList.contains('ativo')")
+            titulo = pg.eval_on_selector("#partida-titulo", "el => el.textContent")
+            esperado = "Vitória" if venceu else "Derrota"
+            assert esperado in titulo, f"esperava {esperado!r} no título, veio {titulo!r}"
+            placar_texto = pg.eval_on_selector("#partida-placar", "el => el.textContent")
+            assert "3" in placar_texto, placar_texto
+
+        page_guest.click("#btn-voltar-menu")
+        page_guest.wait_for_url("**/menu.html*", timeout=5_000)
 
         assert not erros, f"erros no console: {erros}"
         ctx_host.close()

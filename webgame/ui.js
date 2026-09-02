@@ -13,10 +13,29 @@ var TCG = window.TCG || (window.TCG = {});
 // pendente de verdade, só o host tem); `modoLocal = false` desliga o
 // piloto automático de bot (turno da "IA"/auto-resposta de seleção) —
 // em multiplayer isso é sempre um humano de verdade do outro lado.
+// `partida`/`role` (multiplayer, ver webgame/match.js): quando presentes,
+// esta é uma partida de vários duelos (melhor de 5) em vez de um duelo
+// solto — renderFim() troca "Nova Partida" (fluxo solo vs. IA) por
+// "Próximo Duelo" (só o host pode avançar; ver botão abaixo) e mostra o
+// placar corrente, até a partida inteira acabar (overlay separado).
 TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
-  const { acoes = TCG.acoes, resolverSelecao = (id, escolha) => game.selection.resolver(id, escolha), modoLocal = true } = opcoes;
+  const { acoes = TCG.acoes, resolverSelecao = (id, escolha) => game.selection.resolver(id, escolha), modoLocal = true, partida = null, role = null } = opcoes;
   const el = (id) => document.getElementById(id);
   const oponenteId = TCG.oponenteDe(game, jogadorLocal);
+
+  // Os botões estáticos (fora do que render() reconstrói do zero a cada
+  // vez) são compartilhados entre duelos numa PARTIDA — webgame/match.js
+  // chama TCG.criarUI de novo a cada duelo novo, sempre em cima dos MESMOS
+  // elementos do DOM (index.html não é recriado). Sem isso, cada duelo
+  // empilharia mais um listener por cima do(s) duelo(s) anterior(es), e um
+  // clique passaria a disparar a ação várias vezes com `game`s diferentes
+  // (o antigo, já encerrado, e o atual).
+  function ligarClique(id, handler) {
+    const elemento = el(id);
+    if (elemento._tcgOnClick) elemento.removeEventListener("click", elemento._tcgOnClick);
+    elemento._tcgOnClick = handler;
+    elemento.addEventListener("click", handler);
+  }
 
   const previewImg = el("preview-img");
   const previewVazio = el("preview-vazio");
@@ -26,6 +45,7 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
   const logEl = el("log");
   const overlaySelecao = el("overlay-selecao");
   const overlayFim = el("overlay-fim");
+  const overlayFimPartida = el("overlay-fim-partida");
   const fxLayer = el("fx-layer");
 
   // Carta (objeto) -> DOM do slot/carta-mão que a representa AGORA MESMO.
@@ -405,6 +425,21 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
   }
 
   function renderFim() {
+    // A partida inteira já acabou (ver webgame/match.js) — o overlay de
+    // FIM DE DUELO nem chega a aparecer nessa última rodada, vai direto
+    // pro overlay de fim de PARTIDA.
+    if (partida && partida.fimDePartida) {
+      overlayFim.classList.remove("ativo");
+      overlayFimPartida.classList.add("ativo");
+      const venceu = partida.fimDePartida.vencedor === jogadorLocal;
+      el("partida-titulo").textContent = venceu ? "Vitória na Partida!" : "Derrota na Partida";
+      el("partida-titulo").style.color = venceu ? "var(--accent-2)" : "var(--perigo)";
+      el("partida-placar").textContent =
+        `Placar final — ${game.players[1].nome}: ${partida.vitoriasDuelo[1]} · ${game.players[2].nome}: ${partida.vitoriasDuelo[2]}`;
+      return;
+    }
+    overlayFimPartida.classList.remove("ativo");
+
     if (!game.fimDeJogo) { overlayFim.classList.remove("ativo"); return; }
     overlayFim.classList.add("ativo");
     const venceu = game.fimDeJogo.perdedor !== jogadorLocal;
@@ -414,6 +449,24 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
     el("fim-resumo").textContent =
       `${game.players[1].nome}: ${game.players[1].mana} mana / ${game.players[1].vida} vida — ` +
       `${game.players[2].nome}: ${game.players[2].mana} mana / ${game.players[2].vida} vida`;
+
+    // Fluxo de PARTIDA (vários duelos): mostra o placar corrente e troca o
+    // botão "Nova Partida" (solo vs. IA) por "Próximo Duelo" — só o host
+    // decide quando o próximo duelo começa (TCG.iniciarPartidaMultiplayer,
+    // match.js); o guest só vê um lembrete de que está esperando por ele.
+    const elPlacar = el("fim-placar");
+    const btnNovaPartida = el("btn-nova-partida");
+    const btnProximoDuelo = el("btn-proximo-duelo");
+    if (partida) {
+      elPlacar.style.display = "block";
+      elPlacar.textContent = `Placar da partida — ${game.players[1].nome}: ${partida.vitoriasDuelo[1]} · ${game.players[2].nome}: ${partida.vitoriasDuelo[2]}`;
+      btnNovaPartida.style.display = "none";
+      btnProximoDuelo.style.display = role === "host" ? "inline-block" : "none";
+    } else {
+      elPlacar.style.display = "none";
+      btnNovaPartida.style.display = "inline-block";
+      btnProximoDuelo.style.display = "none";
+    }
   }
 
   function render() {
@@ -1089,8 +1142,8 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
     }
   }
 
-  el("btn-atacar").addEventListener("click", () => tentar(() => acoes.atacar(game, jogadorLocal, oponenteId)));
-  el("btn-fase").addEventListener("click", () => {
+  ligarClique("btn-atacar", () => tentar(() => acoes.atacar(game, jogadorLocal, oponenteId)));
+  ligarClique("btn-fase", () => {
     // "Próxima Fase" avança um passo só; só na Fase de Batalha o botão vira
     // "Fim de Turno" e de fato fecha o turno do jogador local (terminarTurno
     // consome o resto da Fase de Batalha e entrega a vez ao oponente).
@@ -1106,8 +1159,10 @@ TCG.criarUI = function criarUI(game, jogadorLocal, opcoes = {}) {
     }
     tentar(pularRecursoSeForAVez);
   });
-  el("btn-nova-partida").addEventListener("click", () => window.iniciarNovaPartida());
-  el("btn-fechar-descarte").addEventListener("click", () => el("overlay-descarte").classList.remove("ativo"));
+  ligarClique("btn-nova-partida", () => window.iniciarNovaPartida());
+  ligarClique("btn-proximo-duelo", () => partida && partida.iniciarProximoDuelo());
+  ligarClique("btn-voltar-menu", () => { location.href = "menu.html"; });
+  ligarClique("btn-fechar-descarte", () => el("overlay-descarte").classList.remove("ativo"));
 
   mostrarPreview(null);
   pularRecursoSeForAVez();
