@@ -472,7 +472,11 @@ main.tela-menu {
 }
 .menu-entrar-sala input::placeholder { color: var(--text-muted); letter-spacing: normal; text-transform: none; }
 .menu-entrar-sala input:focus { outline: none; border-color: var(--accent); }
-.menu-entrar-sala button.acao { flex: 0 0 auto; padding: 8px 14px; font-size: 0.95rem; }
+/* `.menu-multiplayer button.acao` (acima) bota width:100% pro botão de
+   "Criar Sala de Duelo" — sem essa sobrescrita, ele empurraria o input do
+   código pra quase zero de largura na linha (flex:0 0 auto não encolhe,
+   então TODO o aperto de espaço sobra pro input). */
+.menu-entrar-sala button.acao { width: auto; flex: 0 0 auto; padding: 8px 14px; font-size: 0.95rem; }
 .menu-sala-status { color: var(--text-muted); font-size: 0.85rem; text-align: center; max-width: 420px; min-height: 1.2em; }
 .menu-sala-status.erro { color: var(--perigo); }
 
