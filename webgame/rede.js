@@ -65,7 +65,11 @@ TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal }) {
     game.fimDeJogo = estado.fimDeJogo;
     for (const pid of game.jogadores) {
       const p = estado.players[pid];
-      game.players[pid].nome = p.nome;
+      // NÃO sincroniza `nome`: é só um rótulo local ("Você"/"Oponente",
+      // ver TCG.criarJogo/match.js), não estado de jogo de verdade — cada
+      // lado já criou o SEU `game` com o nome certo do PRÓPRIO ponto de
+      // vista; copiar o nome do host por cima faria os dois lados
+      // mostrarem os mesmos rótulos (do ponto de vista do host).
       game.players[pid].mana = p.mana;
       game.players[pid].vida = p.vida;
       game.players[pid].mao = p.mao.map(resolverCartaRecebida);

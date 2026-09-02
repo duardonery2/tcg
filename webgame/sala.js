@@ -34,12 +34,27 @@ TCG.conectarRelay = function conectarRelay(url) {
 // Espera a PRÓXIMA mensagem JSON e some do fluxo — uso único, só pro
 // handshake ponto-a-ponto (criar/entrar/retomar); depois disso quem chama
 // volta a instalar seu próprio listener de "message" pro resto da partida.
+// Também rejeita se a conexão cair ANTES de qualquer mensagem chegar — sem
+// isso, uma queda silenciosa (ex.: navegador suspende a aba em segundo
+// plano enquanto o host troca de app pra compartilhar o código) deixava
+// essa promise pendurada pra sempre, sem erro nenhum: a tela ficava presa
+// em "Aguardando..." mesmo depois do oponente já ter entrado de verdade.
 TCG.aguardarMensagemRelay = function aguardarMensagemRelay(ws) {
   return new Promise((resolve, reject) => {
-    ws.addEventListener("message", function ouvir(ev) {
+    function limpar() {
       ws.removeEventListener("message", ouvir);
+      ws.removeEventListener("close", aoFechar);
+    }
+    function ouvir(ev) {
+      limpar();
       try { resolve(JSON.parse(ev.data)); } catch (e) { reject(e); }
-    }, { once: true });
+    }
+    function aoFechar() {
+      limpar();
+      reject(new Error("A conexão com o relay caiu antes de receber resposta. Tente de novo."));
+    }
+    ws.addEventListener("message", ouvir, { once: true });
+    ws.addEventListener("close", aoFechar, { once: true });
   });
 };
 

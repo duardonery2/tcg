@@ -92,6 +92,16 @@ def testar_criar_e_entrar_por_codigo(browser):
         assert codigo in page_host.url and "papel=host" in page_host.url, page_host.url
         assert codigo in page_guest.url and "papel=guest" in page_guest.url, page_guest.url
 
+        # Cada lado deve ver os rótulos "Você"/"Oponente" do PRÓPRIO ponto
+        # de vista, não copiados do host pela sincronização de estado (ver
+        # rede.js aplicarSnapshot — nome não é sincronizado de propósito).
+        nome_local_host = page_host.evaluate("() => window.game.players[1].nome")
+        nome_local_guest = page_guest.evaluate("() => window.game.players[2].nome")
+        assert "Você" in nome_local_host, f"host deveria se ver como 'Você': {nome_local_host}"
+        assert "Você" in nome_local_guest, f"guest deveria se ver como 'Você': {nome_local_guest}"
+        assert nome_local_host != page_host.evaluate("() => window.game.players[2].nome")
+        assert nome_local_guest != page_guest.evaluate("() => window.game.players[1].nome")
+
         assert not erros, f"erros no console: {erros}"
         ctx_host.close()
         ctx_guest.close()
