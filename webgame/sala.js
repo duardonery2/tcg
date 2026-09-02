@@ -5,10 +5,11 @@
 // a ouvir "message" por conta própria (ver webgame/rede.js).
 var TCG = window.TCG || (window.TCG = {});
 
-// Trocado pelo endereço do relay publicado antes do deploy (ver plano de
-// multiplayer / fly.toml); ?relay=<url> sobrepõe, útil pra testar contra
-// scripts/relay_server.py rodando local.
-TCG.RELAY_PADRAO = "wss://tcg-relay.fly.dev";
+// Relay publicado no Fly.io (ver fly.toml — "tcg-relay" já estava em uso,
+// o nome de verdade saiu como tcg-relay-black-skylark-7238);
+// ?relay=<url> sobrepõe, útil pra testar contra scripts/relay_server.py
+// rodando local.
+TCG.RELAY_PADRAO = "wss://tcg-relay-black-skylark-7238.fly.dev";
 
 TCG.relayUrl = function relayUrl() {
   const params = new URLSearchParams(window.location.search);
