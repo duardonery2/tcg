@@ -458,6 +458,23 @@ main.tela-menu {
 .menu-opcoes button.acao { padding: 14px 18px; font-size: 1.05rem; }
 .menu-status { color: var(--text-muted); font-size: 0.85rem; text-align: center; max-width: 420px; }
 
+.menu-multiplayer {
+  display: flex; flex-direction: column; align-items: center; gap: 10px; width: 260px;
+  padding-top: 14px; border-top: 1px solid var(--border);
+}
+.menu-multiplayer button.acao { width: 100%; padding: 14px 18px; font-size: 1.05rem; }
+.menu-divisor { color: var(--text-muted); font-size: 0.8rem; }
+.menu-entrar-sala { display: flex; gap: 8px; width: 100%; }
+.menu-entrar-sala input {
+  flex: 1 1 auto; min-width: 0; background: var(--bg-slot); border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 1rem; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.menu-entrar-sala input::placeholder { color: var(--text-muted); letter-spacing: normal; text-transform: none; }
+.menu-entrar-sala input:focus { outline: none; border-color: var(--accent); }
+.menu-entrar-sala button.acao { flex: 0 0 auto; padding: 8px 14px; font-size: 0.95rem; }
+.menu-sala-status { color: var(--text-muted); font-size: 0.85rem; text-align: center; max-width: 420px; min-height: 1.2em; }
+.menu-sala-status.erro { color: var(--perigo); }
+
 main.tela-deckbuilder { grid-template-rows: 1fr; }
 .pools { grid-column: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
 .pool-secao {

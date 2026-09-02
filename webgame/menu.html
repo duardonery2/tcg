@@ -17,10 +17,21 @@
     <button class="acao" id="btn-construir-baralho">Construir Baralho</button>
   </div>
   <div class="menu-status" id="menu-status"></div>
+
+  <div class="menu-multiplayer">
+    <button class="acao" id="btn-criar-sala">Criar Sala de Duelo</button>
+    <div class="menu-divisor">ou</div>
+    <div class="menu-entrar-sala">
+      <input type="text" id="input-codigo-sala" placeholder="Código da sala" maxlength="6" autocomplete="off" autocapitalize="characters" />
+      <button class="acao" id="btn-entrar-sala">Entrar</button>
+    </div>
+  </div>
+  <div class="menu-sala-status" id="menu-sala-status"></div>
 </main>
 
 <script src="data.js"></script>
 <script src="engine.js"></script>
+<script src="sala.js"></script>
 <script src="menu.js"></script>
 </body>
 </html>

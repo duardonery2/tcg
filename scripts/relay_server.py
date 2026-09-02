@@ -41,12 +41,21 @@ INTERVALO_LIMPEZA_SEGUNDOS = 30
 
 class SalaComCodigo(Sala):
     """Uma Sala (host/guest) mais os metadados de quando cada lado ficou
-    incompleto, usados só pra decidir quando a sala expira."""
+    incompleto, usados só pra decidir quando a sala expira.
+
+    `foi_completada` importa porque a navegação menu.html -> index.html
+    fecha as DUAS conexões originais (cada lado fecha a própria assim que
+    recebe a confirmação de pareamento e troca de página) ANTES de abrirem
+    as conexões novas que mandam "retomarSala" — por um instante os dois
+    slots ficam vazios de novo, mesmo com jogadores reais a caminho. Sem
+    esse flag, esse instante seria indistinguível de "sala nunca teve
+    ninguém" e a sala seria apagada na hora, invalidando o código."""
 
     def __init__(self) -> None:
         super().__init__()
         self.criada_em = time.monotonic()
         self.incompleta_desde: float | None = self.criada_em
+        self.foi_completada = False
 
 
 class RegistroDeSalas:
@@ -69,7 +78,11 @@ class RegistroDeSalas:
         sala = self.salas.get(codigo)
         if sala is None:
             return
-        sala.incompleta_desde = None if sala.esta_completa() else time.monotonic()
+        if sala.esta_completa():
+            sala.incompleta_desde = None
+            sala.foi_completada = True
+        else:
+            sala.incompleta_desde = time.monotonic()
 
     async def limpar_periodicamente(self) -> None:
         while True:
@@ -79,10 +92,15 @@ class RegistroDeSalas:
             for codigo, sala in self.salas.items():
                 if sala.incompleta_desde is None:
                     continue
+                # Uma sala que já foi completada uma vez usa sempre o prazo
+                # curto de reconexão, mesmo que os dois slots estejam vazios
+                # agora (ver docstring de SalaComCodigo) — só uma sala que
+                # NUNCA teve os dois lados usa o prazo longo de "esperando
+                # alguém entrar pela primeira vez".
                 limite = (
-                    TEMPO_EXPIRACAO_SALA_VAZIA_SEGUNDOS
-                    if sala.host is None and sala.guest is None
-                    else TEMPO_GRACA_RECONEXAO_SEGUNDOS
+                    TEMPO_GRACA_RECONEXAO_SEGUNDOS
+                    if sala.foi_completada
+                    else TEMPO_EXPIRACAO_SALA_VAZIA_SEGUNDOS
                 )
                 if agora - sala.incompleta_desde > limite:
                     expiradas.append(codigo)
@@ -174,7 +192,11 @@ async def _tratar_conexao(registro: RegistroDeSalas, ws: ServerConnection) -> No
         await bombear(ws, sala)
     finally:
         sala.desconectar(ws)
-        if sala.host is None and sala.guest is None:
+        vazia = sala.host is None and sala.guest is None
+        if vazia and not sala.foi_completada:
+            # Nunca teve os dois lados pareados — não há ninguém que possa
+            # estar a caminho de volta com esse código, então não faz
+            # sentido guardar a sala pro prazo de reconexão.
             registro.salas.pop(codigo, None)
             print(f"[relay] sala {codigo}: vazia, removida")
         else:

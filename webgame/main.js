@@ -32,64 +32,93 @@ window.iniciarNovaPartida = function iniciarNovaPartida() {
   novaPartida(seed);
 };
 
-// ---- multiplayer LAN --------------------------------------------------
+// ---- multiplayer (LAN e sala por código, via internet) -----------------
 
 function mostrarStatusConexao(texto) {
   const el = document.getElementById("status-multiplayer");
   if (el) { el.textContent = texto; el.style.display = texto ? "block" : "none"; }
 }
 
-function iniciarMultiplayer(servidor) {
-  const ws = new WebSocket(`ws://${servidor}`);
-  ws.addEventListener("error", () => mostrarStatusConexao(`Não foi possível conectar em ws://${servidor}.`));
+// Comum aos dois jeitos de entrar em multiplayer (LAN via ?servidor=, ou
+// sala por código via internet): uma vez que o relay já disse qual é o
+// papel deste navegador, o resto do bootstrap é idêntico — só muda como o
+// `ws` foi aberto e como o papel foi descoberto.
+function bootstrapMultiplayer(ws, papel) {
   ws.addEventListener("close", () => mostrarStatusConexao("Conexão com o outro jogador caiu. Recarregue a página pra tentar de novo."));
 
+  if (papel === "host") {
+    mostrarStatusConexao("Você é o HOST. Aguardando o outro jogador conectar...");
+    const params = new URLSearchParams(window.location.search);
+    const seed = params.has("seed") ? Number(params.get("seed")) : null;
+    const game = TCG.criarJogo({ seed, nomes: { 1: "Você (host)", 2: "Oponente" } });
+    window.game = game;
+    // a UI só é ligada quando o guest conecta de verdade — antes disso não
+    // faz sentido nenhuma ação rodar sem ter quem sincronizar.
+    ws.addEventListener("message", function aoConectarGuest(ev) {
+      const msg = JSON.parse(ev.data);
+      if (msg.type !== "guestConectou") return;
+      ws.removeEventListener("message", aoConectarGuest);
+      mostrarStatusConexao(null);
+      TCG.iniciarJogo(game);
+      TCG.criarRede({ role: "host", ws, game, jogadorLocal: 1 });
+      window.ui = TCG.criarUI(game, 1, { modoLocal: false });
+    });
+  } else {
+    // guest: NÃO cria uma simulação de verdade — só um objeto com o
+    // formato certo pro render()/criarUI rodarem em cima; o RNG dele nunca
+    // decide nada (o 1o snapshot do host sobrescreve tudo assim que
+    // chegar, ver rede.js aplicarSnapshot).
+    mostrarStatusConexao("Conectado. Aguardando o estado inicial do jogo...");
+    const game = TCG.criarJogo({ nomes: { 1: "Oponente", 2: "Você" } });
+    window.game = game;
+    const rede = TCG.criarRede({ role: "guest", ws, game, jogadorLocal: 2 });
+    window.ui = TCG.criarUI(game, 2, {
+      modoLocal: false,
+      acoes: rede.acoes,
+      resolverSelecao: (id, escolha) => rede.resolverSelecao(id, escolha),
+    });
+    mostrarStatusConexao(null);
+  }
+}
+
+// LAN (scripts/relay_lan.py): o relay decide o papel pela ORDEM de conexão
+// — o JS só reage ao que ele informa, não escolhe sozinho.
+function iniciarMultiplayerLan(servidor) {
+  const ws = new WebSocket(`ws://${servidor}`);
+  ws.addEventListener("error", () => mostrarStatusConexao(`Não foi possível conectar em ws://${servidor}.`));
   ws.addEventListener("message", function primeiraMensagem(ev) {
     const msg = JSON.parse(ev.data);
     if (msg.type !== "papel") return; // ignora qualquer coisa antes da atribuição de papel
     ws.removeEventListener("message", primeiraMensagem);
-
-    if (msg.papel === "host") {
-      mostrarStatusConexao("Você é o HOST. Aguardando o outro jogador conectar...");
-      const params = new URLSearchParams(window.location.search);
-      const seed = params.has("seed") ? Number(params.get("seed")) : null;
-      const game = TCG.criarJogo({ seed, nomes: { 1: "Você (host)", 2: "Oponente" } });
-      window.game = game;
-      // a UI só é ligada quando o guest conecta de verdade — antes disso
-      // não faz sentido nenhuma ação rodar sem ter quem sincronizar.
-      ws.addEventListener("message", function aoConectarGuest(ev2) {
-        const msg2 = JSON.parse(ev2.data);
-        if (msg2.type !== "guestConectou") return;
-        ws.removeEventListener("message", aoConectarGuest);
-        mostrarStatusConexao(null);
-        TCG.iniciarJogo(game);
-        TCG.criarRede({ role: "host", ws, game, jogadorLocal: 1 });
-        window.ui = TCG.criarUI(game, 1, { modoLocal: false });
-      });
-    } else {
-      // guest: NÃO cria uma simulação de verdade — só um objeto com o
-      // formato certo pro render()/criarUI rodarem em cima; o RNG dele
-      // nunca decide nada (o 1o snapshot do host sobrescreve tudo assim
-      // que chegar, ver rede.js aplicarSnapshot).
-      mostrarStatusConexao("Conectado. Aguardando o estado inicial do jogo...");
-      const game = TCG.criarJogo({ nomes: { 1: "Oponente", 2: "Você" } });
-      window.game = game;
-      const rede = TCG.criarRede({ role: "guest", ws, game, jogadorLocal: 2 });
-      window.ui = TCG.criarUI(game, 2, {
-        modoLocal: false,
-        acoes: rede.acoes,
-        resolverSelecao: (id, escolha) => rede.resolverSelecao(id, escolha),
-      });
-      mostrarStatusConexao(null);
-    }
+    bootstrapMultiplayer(ws, msg.papel);
   });
+}
+
+// Sala por código (scripts/relay_server.py), chegando aqui depois da
+// navegação a partir de menu.html — o WebSocket de lá não sobrevive à
+// troca de página, então abrimos um NOVO e mandamos "retomarSala" pra
+// reocupar o mesmo slot (host/guest) que o menu já tinha conseguido.
+async function iniciarMultiplayerPorSala({ relay, sala, papel }) {
+  mostrarStatusConexao("Conectando...");
+  try {
+    const ws = await TCG.conectarRelay(relay);
+    ws.addEventListener("error", () => mostrarStatusConexao(`Não foi possível conectar em ${relay}.`));
+    await TCG.retomarSalaNoRelay(ws, sala, papel);
+    bootstrapMultiplayer(ws, papel);
+  } catch (e) {
+    mostrarStatusConexao(e.message || "Não foi possível entrar na sala. Volte ao menu e tente de novo.");
+  }
 }
 
 window.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(window.location.search);
+  if (params.get("sala") && params.get("papel")) {
+    iniciarMultiplayerPorSala({ relay: params.get("relay") || TCG.RELAY_PADRAO, sala: params.get("sala"), papel: params.get("papel") });
+    return;
+  }
   const servidor = params.get("servidor");
   if (servidor) {
-    iniciarMultiplayer(servidor);
+    iniciarMultiplayerLan(servidor);
     return;
   }
   const seed = params.has("seed") ? Number(params.get("seed")) : null;
