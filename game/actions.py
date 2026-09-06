@@ -408,5 +408,5 @@ class ShuffleAction:
             loc = ctrl.world.get_component(card, Location)
             if loc:
                 loc.zona = Zona.BARALHO_ARCANO
-        self.deck.embaralhar()
+        self.deck.embaralhar(ctrl.rng)
         ctrl.bus.publish(DeckShuffled(deck_nome=self.deck.nome))

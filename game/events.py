@@ -194,6 +194,12 @@ class GameOver(Event):
 class EventBus:
     def __init__(self) -> None:
         self._listeners: DefaultDict[type, list[Callable[[Event], None]]] = defaultdict(list)
+        # Chamado pra TODO evento, de qualquer tipo — espelha
+        # webgame/events.js's onQualquer/_ouvintesGlobais, usado por um
+        # servidor de multiplayer pra repassar cada evento publicado pros
+        # clientes conectados, sem precisar listar/manter uma lista de tipos
+        # separada aqui.
+        self._global_listeners: list[Callable[[Event], None]] = []
         self.historico: list[Event] = []
         self.ctrl = None  # ligado pelo GameController — ver disparar_triggers abaixo
 
@@ -204,9 +210,24 @@ class EventBus:
         if callback in self._listeners.get(event_type, []):
             self._listeners[event_type].remove(callback)
 
+    def subscribe_all(self, callback: Callable[[Event], None]) -> None:
+        self._global_listeners.append(callback)
+
+    def unsubscribe_all(self, callback: Callable[[Event], None]) -> None:
+        if callback in self._global_listeners:
+            self._global_listeners.remove(callback)
+
     def publish(self, event: Event) -> None:
         self.historico.append(event)
         for callback in self._listeners.get(type(event), []):
+            callback(event)
+        # Ordem deliberada: ouvintes especificos do tipo primeiro, depois os
+        # globais (ex.: broadcast de rede), depois os gatilhos — um ouvinte
+        # global que decide "repassar o estado atual" já vê qualquer efeito
+        # sincrono que um ouvinte especifico tenha aplicado, mas ainda roda
+        # ANTES da cascata de gatilhos abaixo (que pode publicar MAIS
+        # eventos, cada um passando pelos globais de novo, na ordem certa).
+        for callback in list(self._global_listeners):
             callback(event)
         # A "pilha de eventos" é o próprio `historico` acima; a cada evento
         # publicado, roda a lista de gatilhos registrados (ver triggers.py)

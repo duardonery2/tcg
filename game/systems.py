@@ -59,8 +59,9 @@ class ResourceSystem(System):
             self.bus.publish(ManaChanged(player_id=player_id, delta=ganho, total=ps.mana))
 
         baralho = self.baralhos[player_id]
+        rng = getattr(self.ctrl, "rng", None) if self.ctrl is not None else None
         try:
-            carta = baralho.draw_random()
+            carta = baralho.draw_random(rng)
         except DeckEmptyError:
             return  # baralho vazio: nao compra (regra de "sem carta" fica pro chamador decidir)
 

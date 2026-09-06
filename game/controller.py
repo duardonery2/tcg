@@ -19,7 +19,7 @@ from .components import CardInfo, Fase, PlayerState
 from .deck import novo_deck_arcano, novo_panteao
 from .ecs import World
 from .effects import EFFECTS, comprar
-from .events import EventBus, GameOver
+from .events import DomainActivated, EventBus, GameOver
 from .loader import DEFAULT_CSV_PATH, carregar_csv_para_jogador
 from .phases import PhaseSystem, UpkeepSystem
 from .selection import SelectionManager
@@ -44,6 +44,11 @@ class GameController:
         self.baralhos = {}
         self.panteoes = {}
         self.dominio_cards: set[int] = set()
+        # Qual jogador ativou por ultimo um Dominio — so usado pra desempate
+        # visual quando os DOIS lados tem Dominio ativo ao mesmo tempo (raro);
+        # espelha webgame/engine.js's game.ultimoDominioAtivadoPor, usado por
+        # TCG.dominioParaFundo no cliente.
+        self.ultimo_dominio_ativado_por: int | None = None
         self._owner_map: dict[int, int] = {}
         self.triggers: list = []  # ver triggers.py
         self.passivos: list = []  # ver triggers.py
@@ -76,6 +81,7 @@ class GameController:
         self._iniciado = False
         self._fim_de_jogo: GameOver | None = None
         self.bus.subscribe(GameOver, self._on_game_over)
+        self.bus.subscribe(DomainActivated, self._on_domain_activated)
 
     # ---- ciclo de vida ---------------------------------------------------
 
@@ -140,6 +146,9 @@ class GameController:
 
     def _on_game_over(self, event: GameOver) -> None:
         self._fim_de_jogo = event
+
+    def _on_domain_activated(self, event: DomainActivated) -> None:
+        self.ultimo_dominio_ativado_por = event.player_id
 
     def fim_de_jogo(self) -> GameOver | None:
         return self._fim_de_jogo
