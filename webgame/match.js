@@ -255,6 +255,16 @@ TCG.iniciarPartidaMultiplayer = function iniciarPartidaMultiplayer({ ws, role, j
         }
       }
       if (redeAtual) redeAtual.tratarMensagem(msg);
+      // Rede de segurança: nem todo "evento" tem um handler em ui.js que
+      // enfileira uma animação (e portanto acaba chamando render() quando
+      // ela termina) — "faseAlterada" sozinho (ex.: PRINCIPAL -> BATALHA,
+      // sem compra/mana envolvida) é um caso real disso. Sem isto, o
+      // `game` do guest já estava correto (aplicarSnapshot já rodou, ver
+      // rede.js) mas a TELA ficava presa no estado anterior — o botão de
+      // Atacar simplesmente nunca aparecia pro guest ao entrar na Fase de
+      // Batalha. filaFxVazia() evita brigar com uma animação já em
+      // andamento (ela mesma chama render() quando terminar).
+      if (msg.type === "evento" && window.ui && window.ui.filaFxVazia()) window.ui.render();
     };
   }
 
