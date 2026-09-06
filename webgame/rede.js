@@ -10,11 +10,27 @@
 // que ele manda (ver TCG.estadoCompletoPara, engine.js).
 var TCG = window.TCG || (window.TCG = {});
 
-TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal }) {
+// `tipoSincronizacao` (default "sincronizacaoInicial"): tipo do PRIMEIRO
+// evento mandado pro guest na construção (ver final da seção HOST). Além
+// do início normal de duelo, TCG.iniciarPartidaMultiplayer (match.js)
+// também chama criarRede de novo quando um guest RECONECTA no meio de um
+// duelo já em andamento — nesse caso passa "resincronizacao" pra não ser
+// confundido com "começou um duelo novo" (ver dispatch do guest,
+// match.js), mesmo repassando o mesmo snapshot completo de sempre.
+TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal, tipoSincronizacao = "sincronizacaoInicial" }) {
   const oponenteId = TCG.oponenteDe(game, jogadorLocal);
 
+  // `wsAtual` (não `ws` direto): TCG.substituirWsDaRede permite trocar o
+  // WebSocket por baixo depois de uma reconexão (ver match.js
+  // tentarReconectar) sem precisar reconstruir toda a rede/UI do zero —
+  // só o transporte muda, o `game`/estado de sincronização continuam os
+  // mesmos.
+  let wsAtual = ws;
   function enviar(msg) {
-    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+    if (wsAtual.readyState === WebSocket.OPEN) wsAtual.send(JSON.stringify(msg));
+  }
+  function substituirWs(novoWs) {
+    wsAtual = novoWs;
   }
 
   // ---- cache de identidade por instanceId (só usada pelo GUEST) --------
@@ -191,14 +207,17 @@ TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal }) {
 
     // primeiro snapshot: o guest ainda não tem NADA desenhado certo até
     // aqui, não dá pra esperar o primeiro evento de jogo pra sincronizar.
-    enviar({ type: "evento", tipo: "sincronizacaoInicial", payload: {}, estado: TCG.estadoCompletoPara(game, oponenteId) });
+    // (mesma mensagem também cobre "guest RECONECTOU no meio do duelo" —
+    // ver `tipoSincronizacao` acima — já que o efeito é idêntico: o outro
+    // lado precisa de um snapshot completo pra se atualizar.)
+    enviar({ type: "evento", tipo: tipoSincronizacao, payload: {}, estado: TCG.estadoCompletoPara(game, oponenteId) });
 
     // o host age sempre por TCG.acoes.* direto, não precisa de wrapper de
     // ações — só de receber intents/respostas de seleção do guest. Quem
     // chama (webgame/match.js) é dono do único listener "message" do `ws`
     // ao longo de toda a partida (várias trocas de duelo incluídas) e
     // repassa cada mensagem recebida pra cá.
-    return { tratarMensagem };
+    return { tratarMensagem, substituirWs };
   }
 
   // ---- papel: GUEST --------------------------------------------------
@@ -248,6 +267,7 @@ TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal }) {
 
   return {
     tratarMensagem,
+    substituirWs,
     acoes: acoesDoGuest,
     // Nem toda "selecaoPedida" que o guest vê veio da rede: algumas são só
     // UI local (ex.: solicitarInvocacao em ui.js chama game.selection.

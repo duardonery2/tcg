@@ -68,3 +68,18 @@ async function trocaComRelay(ws, mensagemEnviada) {
 TCG.criarSalaNoRelay = (ws) => trocaComRelay(ws, { type: "criarSala" });
 TCG.entrarSalaNoRelay = (ws, codigo) => trocaComRelay(ws, { type: "entrarSala", codigo });
 TCG.retomarSalaNoRelay = (ws, codigo, papel) => trocaComRelay(ws, { type: "retomarSala", codigo, papel });
+
+// Mantém o WebSocket "quente": alguns proxies/redes (móvel, corporativa,
+// e possivelmente o próprio Fly.io) fecham conexões que ficam um tempo
+// sem tráfego de dados — um duelo de cartas passa minutos ocioso entre
+// jogadas. Manda um ping pequeno periodicamente; o relay responde com
+// pong direto pra quem mandou, sem repassar pro outro lado (ver
+// scripts/relay_core.py bombear) — os dois lados de webgame/match.js
+// simplesmente ignoram "pong" ao receber.
+TCG.INTERVALO_HEARTBEAT_MS = 20000;
+TCG.iniciarHeartbeat = function iniciarHeartbeat(ws, intervaloMs = TCG.INTERVALO_HEARTBEAT_MS) {
+  const id = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) ws.send('{"type":"ping"}');
+  }, intervaloMs);
+  return () => clearInterval(id);
+};

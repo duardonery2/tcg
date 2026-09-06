@@ -50,7 +50,17 @@ function iniciarMultiplayerLan(servidor) {
     const msg = JSON.parse(ev.data);
     if (msg.type !== "papel") return; // ignora qualquer coisa antes da atribuição de papel
     ws.removeEventListener("message", primeiraMensagem);
-    TCG.iniciarPartidaMultiplayer({ ws, role: msg.papel, jogadorLocal: msg.papel === "host" ? 1 : 2 });
+    // Reconexão no relay LAN: como scripts/relay_lan.py não tem código de
+    // sala, só reabre uma conexão nova pro mesmo endereço e espera o papel
+    // espontâneo de novo — funciona porque `sala.desconectar` (relay_lan.py)
+    // já liberou o slot antigo, contanto que o OUTRO lado continue
+    // conectado ocupando o dele.
+    const reconectar = async () => {
+      const novoWs = await TCG.conectarRelay(`ws://${servidor}`);
+      await TCG.aguardarMensagemRelay(novoWs);
+      return novoWs;
+    };
+    TCG.iniciarPartidaMultiplayer({ ws, role: msg.papel, jogadorLocal: msg.papel === "host" ? 1 : 2, reconectar });
   });
 }
 
@@ -64,7 +74,15 @@ async function iniciarMultiplayerPorSala({ relay, sala, papel }) {
     const ws = await TCG.conectarRelay(relay);
     ws.addEventListener("error", () => mostrarStatusConexao(`Não foi possível conectar em ${relay}.`));
     await TCG.retomarSalaNoRelay(ws, sala, papel);
-    TCG.iniciarPartidaMultiplayer({ ws, role: papel, jogadorLocal: papel === "host" ? 1 : 2 });
+    // Mesmo mecanismo de retomada usado no handoff menu->index.html serve
+    // pra reconexão de verdade no meio de um duelo (ver
+    // scripts/relay_server.py _parear — a regra é a mesma pros dois casos).
+    const reconectar = async () => {
+      const novoWs = await TCG.conectarRelay(relay);
+      await TCG.retomarSalaNoRelay(novoWs, sala, papel);
+      return novoWs;
+    };
+    TCG.iniciarPartidaMultiplayer({ ws, role: papel, jogadorLocal: papel === "host" ? 1 : 2, reconectar });
   } catch (e) {
     mostrarStatusConexao(e.message || "Não foi possível entrar na sala. Volte ao menu e tente de novo.");
   }

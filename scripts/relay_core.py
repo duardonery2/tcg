@@ -44,12 +44,31 @@ class Sala:
             self.guest = None
 
 
+# Keep-alive de nível de APLICAÇÃO (não confundir com ping/pong do próprio
+# protocolo WebSocket, que a lib `websockets` já manda sozinha): alguns
+# proxies/NATs (rede móvel, corporativa, e possivelmente o próprio
+# Fly.io) derrubam conexões que ficam tempo demais sem TRÁFEGO DE DADOS —
+# frames de controle nem sempre contam pra isso. Um duelo de cartas fica
+# minutos ocioso entre jogadas, então webgame/sala.js manda um destes
+# periodicamente (ver TCG.iniciarHeartbeat) enquanto a conexão existir.
+_PING = '{"type":"ping"}'
+_PONG = '{"type":"pong"}'
+
+
 async def bombear(ws: ServerConnection, sala: Sala) -> None:
     """Repassa cada mensagem de texto recebida em `ws` pra outra ponta da
     `sala`, sem tocar no conteúdo. Roda até a conexão cair; quem chama é
     responsável por chamar `sala.desconectar(ws)` depois (num `finally`),
     já que o que fazer com uma sala esvaziada varia entre os dois relays."""
     async for mensagem in ws:
+        if mensagem == _PING:
+            # Responde só pra quem mandou (keep-alive de transporte, não é
+            # conteúdo de jogo) — nunca repassa pro outro lado.
+            try:
+                await ws.send(_PONG)
+            except websockets.exceptions.ConnectionClosed:
+                pass
+            continue
         destino = sala.outra_ponta(ws)
         if destino is not None:
             try:

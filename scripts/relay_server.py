@@ -35,7 +35,12 @@ ALFABETO_CODIGO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 TAMANHO_CODIGO = 5
 
 TEMPO_EXPIRACAO_SALA_VAZIA_SEGUNDOS = 600  # sala criada mas ninguém entrou
-TEMPO_GRACA_RECONEXAO_SEGUNDOS = 60  # sala completa perdeu um lado
+# Sala completa perdeu um lado: 5 minutos de margem pra reconectar (ver
+# TCG.iniciarPartidaMultiplayer em webgame/match.js, que tenta de novo
+# nessa mesma janela do lado do navegador) — tempo suficiente pra cobrir
+# uma queda de wifi, o navegador suspender a aba em segundo plano, etc.,
+# sem manter uma sala morta pra sempre se ninguém voltar.
+TEMPO_GRACA_RECONEXAO_SEGUNDOS = 300
 INTERVALO_LIMPEZA_SEGUNDOS = 30
 
 
