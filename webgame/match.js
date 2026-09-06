@@ -95,13 +95,16 @@ TCG.iniciarPartidaMultiplayer = function iniciarPartidaMultiplayer({ ws, role, j
     return role === "host" ? { 1: "Você (host)", 2: "Oponente" } : { 1: "Oponente", 2: "Você" };
   }
 
-  // Só a camada de rede (sem mexer em window.ui) — usado tanto pro início
-  // normal de um duelo (dentro de ligarUIDoDuelo) quanto pra REssincronizar
-  // um duelo em andamento depois que o outro lado reconecta (ver dispatch
-  // do host abaixo): nesse segundo caso a UI local não precisa ser refeita,
-  // só a rede, pra mandar um snapshot completo fresco pro lado que voltou.
-  function religarRede(game, { tipoSincronizacao } = {}) {
-    const rede = TCG.criarRede({ role, ws, game, jogadorLocal, tipoSincronizacao });
+  // Só a camada de rede (sem mexer em window.ui) — chamada de dentro de
+  // ligarUIDoDuelo, sempre sobre um `game` NOVO (início de duelo). NUNCA
+  // chame isto de novo sobre um `game` já em uso (ex.: pra reenviar um
+  // snapshot depois que o outro lado reconecta) — o branch HOST de
+  // TCG.criarRede registra listeners em game.bus sem jeito de tirá-los
+  // depois; uma segunda chamada sobre o MESMO bus duplicaria pra sempre
+  // todo broadcast dali pra frente. Pra isso existe
+  // redeAtual.enviarSincronizacaoCompleta (ver dispatch do host abaixo).
+  function religarRede(game) {
+    const rede = TCG.criarRede({ role, ws, game, jogadorLocal });
     redeAtual = rede;
     return rede;
   }
@@ -192,17 +195,20 @@ TCG.iniciarPartidaMultiplayer = function iniciarPartidaMultiplayer({ ws, role, j
           const game = criarJogoDoDuelo(partida, { seed, nomes: nomesParaDuelo() });
           TCG.iniciarJogo(game);
           ligarUIDoDuelo(game);
-        } else {
+        } else if (redeAtual) {
           // "guestConectou" de novo, no meio de um duelo já em andamento,
           // só pode significar que o guest CAIU E RECONECTOU (ver regra
           // unificada em scripts/relay_server.py _parear: qualquer vez que
           // a sala volta a ficar completa, o host é avisado) — NÃO é uma
           // primeira conexão, então NÃO cria um duelo novo (isso jogaria
-          // fora o duelo em andamento!). Só reconstrói a rede em cima do
-          // `game` ATUAL, o que já manda um snapshot completo fresco —
-          // exatamente o que o guest precisa pra recuperar o que perdeu
-          // enquanto esteve fora.
-          religarRede(window.game, { tipoSincronizacao: "resincronizacao" });
+          // fora o duelo em andamento!). NÃO chama religarRede/TCG.criarRede
+          // aqui: isso reconstruiria a rede sobre o MESMO `game.bus`, que já
+          // tem os listeners onQualquer/selecaoPedida da rede ATUAL
+          // registrados (sem "off" correspondente) — duplicaria pra sempre
+          // todo broadcast dali pra frente. Só reenvia um snapshot completo
+          // fresco pela rede que já existe (ver rede.js enviarSincronizacaoCompleta)
+          // — exatamente o que o guest precisa pra recuperar o que perdeu.
+          redeAtual.enviarSincronizacaoCompleta("resincronizacao");
         }
       } else if (msg.type === "oponenteDesconectou") {
         mostrarStatusConexao("O oponente caiu. Aguardando reconexão...");

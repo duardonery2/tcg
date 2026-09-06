@@ -161,6 +161,23 @@ def testar_guest_reconecta_apos_queda(browser):
         parear_por_codigo(page_host, page_guest)
         duelo_antes = page_guest.evaluate("() => window.partida.duelo")
 
+        # Instrumentação pra detectar a regressão real que já aconteceu aqui
+        # uma vez: TCG.criarRede reconstruído sobre o MESMO game.bus do host
+        # (em vez de só reenviar um snapshot avulso) registra
+        # game.bus.onQualquer/selecaoPedida de NOVO, sem tirar os antigos —
+        # cada reconexão adicional dobra/triplica/etc. todo broadcast dali
+        # pra frente. Conta quantos frames "evento" com um marcador único
+        # chegam no WebSocket do guest — DEVE ser exatamente 1 por evento
+        # de verdade, mesmo depois de reconectar.
+        frames_evento_marcados = []
+
+        def observar_ws(ws):
+            def ao_receber(payload):
+                if '"MARCADOR_UNICIDADE"' in payload:
+                    frames_evento_marcados.append(payload)
+            ws.on("framereceived", ao_receber)
+        page_guest.on("websocket", observar_ws)
+
         ws_antes = page_guest.evaluate_handle("() => window.__tcgWs")
         derrubar_conexao(page_guest)
         # ver nota equivalente em testar_host_reconecta_apos_queda: contra
@@ -193,12 +210,33 @@ def testar_guest_reconecta_apos_queda(browser):
         vida_1_guest = page_guest.evaluate("() => window.game.players[1].vida")
         assert vida_1_guest == vida_1_host, f"guest deveria ter recebido um resync do host: host={vida_1_host} guest={vida_1_guest}"
 
+        # Regressão específica: dispara UM evento real do host (não mais o
+        # snapshot de reconexão em si, que é esperado) e confere que chega
+        # exatamente UMA vez no guest — se TCG.criarRede tivesse sido
+        # reconstruído sobre o game.bus já em uso (o bug real que já
+        # aconteceu), chegaria em dobro dali pra frente.
+        page_host.evaluate(
+            """() => {
+                window.game.players[1].vida -= 1;
+                window.game.bus.emit('vidaAlterada', {
+                    playerId: 1, delta: -1, total: window.game.players[1].vida,
+                    MARCADOR_UNICIDADE: true,
+                });
+            }"""
+        )
+        page_host.wait_for_timeout(1000)
+        page_guest.wait_for_timeout(500)
+        assert len(frames_evento_marcados) == 1, (
+            f"esperava exatamente 1 frame marcado chegando no guest, vieram {len(frames_evento_marcados)} "
+            f"— sinal de que a rede foi reconstruída sobre o game.bus já em uso, duplicando o broadcast"
+        )
+
         assert not erros, f"erros no console: {erros}"
         ctx_host.close()
         ctx_guest.close()
     finally:
         parar_relay(proc)
-    print("OK  guest reconecta sozinho depois de uma queda transiente; host reenvia snapshot sem reiniciar o duelo")
+    print("OK  guest reconecta sozinho depois de uma queda transiente; host reenvia snapshot sem reiniciar o duelo, sem duplicar broadcasts depois")
 
 
 def main():

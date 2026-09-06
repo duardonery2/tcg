@@ -205,19 +205,30 @@ TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal, tipoSincroniz
       }
     }
 
+    // Manda um snapshot completo avulso — usada tanto pro bootstrap inicial
+    // (abaixo) quanto por match.js quando o GUEST reconecta no meio de um
+    // duelo já em andamento (tipoSincronizacao: "resincronizacao"). NUNCA
+    // chame TCG.criarRede de novo sobre o MESMO `game` só pra reenviar um
+    // snapshot: os `game.bus.onQualquer`/`game.bus.on("selecaoPedida")`
+    // acima ficam registrados pra sempre (não há "off" correspondente aqui)
+    // — uma segunda chamada duplicaria PERMANENTEMENTE todo broadcast dali
+    // pra frente (2x, depois 3x a cada reconexão adicional), causando
+    // exatamente o sintoma que já apareceu: logs duplicados no guest e o
+    // jogo travando por aplicar o mesmo evento múltiplas vezes.
+    function enviarSincronizacaoCompleta(tipo) {
+      enviar({ type: "evento", tipo, payload: {}, estado: TCG.estadoCompletoPara(game, oponenteId) });
+    }
+
     // primeiro snapshot: o guest ainda não tem NADA desenhado certo até
     // aqui, não dá pra esperar o primeiro evento de jogo pra sincronizar.
-    // (mesma mensagem também cobre "guest RECONECTOU no meio do duelo" —
-    // ver `tipoSincronizacao` acima — já que o efeito é idêntico: o outro
-    // lado precisa de um snapshot completo pra se atualizar.)
-    enviar({ type: "evento", tipo: tipoSincronizacao, payload: {}, estado: TCG.estadoCompletoPara(game, oponenteId) });
+    enviarSincronizacaoCompleta(tipoSincronizacao);
 
     // o host age sempre por TCG.acoes.* direto, não precisa de wrapper de
     // ações — só de receber intents/respostas de seleção do guest. Quem
     // chama (webgame/match.js) é dono do único listener "message" do `ws`
     // ao longo de toda a partida (várias trocas de duelo incluídas) e
     // repassa cada mensagem recebida pra cá.
-    return { tratarMensagem, substituirWs };
+    return { tratarMensagem, substituirWs, enviarSincronizacaoCompleta };
   }
 
   // ---- papel: GUEST --------------------------------------------------
