@@ -181,6 +181,7 @@ TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal, tipoSincroniz
           throw new TCG.AcaoInvalida("Não é a vez desse jogador.");
         }
         if (msg.fn === "invocar") TCG.acoes.invocar(game, oponenteId, carta);
+        else if (msg.fn === "trocarCombatente") TCG.acoes.trocarCombatente(game, oponenteId, carta);
         else if (msg.fn === "ativarHabilidade") TCG.acoes.ativarHabilidade(game, oponenteId, carta);
         else if (msg.fn === "jogarCartaDeCampo") TCG.acoes.jogarCartaDeCampo(game, oponenteId, carta, msg.slot ?? null);
         else if (msg.fn === "ativarMaldicaoSetada") TCG.acoes.ativarMaldicaoSetada(game, oponenteId, carta);
@@ -268,6 +269,11 @@ TCG.criarRede = function criarRede({ role, ws, game, jogadorLocal, tipoSincroniz
   // cuidam de mostrar quando estiver pronto.
   const acoesDoGuest = {
     invocar(g, pid, carta, continuar = () => {}) { enviar({ type: "intent", fn: "invocar", cartaInstanceId: carta.instanceId }); continuar(); },
+    // Faltava inteiro (bug real: o guest nunca conseguia trocar de
+    // combatente ativo na Fase Principal — `acoes.trocarCombatente` não
+    // existia aqui, então o clique só estourava um TypeError silencioso,
+    // sem mandar intent nenhum pro host).
+    trocarCombatente(g, pid, carta, continuar = () => {}) { enviar({ type: "intent", fn: "trocarCombatente", cartaInstanceId: carta.instanceId }); continuar(); },
     ativarHabilidade(g, pid, carta, continuar = () => {}) { enviar({ type: "intent", fn: "ativarHabilidade", cartaInstanceId: carta.instanceId }); continuar(); },
     jogarCartaDeCampo(g, pid, carta, slot = null) { enviar({ type: "intent", fn: "jogarCartaDeCampo", cartaInstanceId: carta.instanceId, slot }); },
     ativarMaldicaoSetada(g, pid, carta) { enviar({ type: "intent", fn: "ativarMaldicaoSetada", cartaInstanceId: carta.instanceId }); },
