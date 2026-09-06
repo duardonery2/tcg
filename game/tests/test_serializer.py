@@ -8,7 +8,7 @@ from __future__ import annotations
 from game.actions import ActivateSetCurseAction, SetCurseAction, SummonAction
 from game.components import Tipo
 from game.controller import GameController
-from game.serializer import estado_completo_para
+from game.serializer import _carta_publica, estado_completo_para, filtrar_payload_para
 
 
 def _achar_na_mao(ctrl, player_id, tipo: Tipo):
@@ -18,6 +18,21 @@ def _achar_na_mao(ctrl, player_id, tipo: Tipo):
         if info.tipo is tipo:
             return c
     return None
+
+
+def test_board_presente_pros_dois_jogadores_mesmo_antes_de_qualquer_invocacao():
+    """Board.lado(pid) (game/board.py) cria o BoardSide PREGUIÇOSAMENTE —
+    ctrl.board.lados fica vazio até alguém pedir um lado pela primeira
+    vez. Um jogo recém-criado (iniciar_jogo(), nenhuma ação ainda) não
+    deveria mandar um "board" ausente/incompleto por causa disso."""
+    ctrl = GameController(seed=42)
+    ctrl.iniciar_jogo()
+    estado = estado_completo_para(ctrl, 1)
+    assert set(estado["board"].keys()) == {1, 2}
+    for pid in (1, 2):
+        assert estado["board"][pid]["playerId"] == pid
+        assert estado["board"][pid]["monstro"] is None
+        assert estado["board"][pid]["magia"] == [None] * 5
 
 
 def test_oponente_nao_ve_a_mao_do_outro_mas_o_dono_ve_a_propria():
@@ -146,3 +161,58 @@ def test_descarte_e_publico_para_qualquer_destinatario():
     assert any(c["instanceId"] == carta for c in descarte_visto_por_2)
     assert not any(c.get("oculto") for c in descarte_visto_por_1)
     assert not any(c.get("oculto") for c in descarte_visto_por_2)
+
+
+def test_filtrar_payload_esconde_carta_de_evento_avulso_por_formato():
+    """filtrar_payload_para (usado pro payload de um EVENTO de rede, não do
+    snapshot inteiro) detecta por FORMATO do valor — um dict de carta com
+    'instanceId' — não por nome de campo, espelhando rede.js's
+    filtrarPayload/deveOcultarPara."""
+    ctrl = GameController(seed=42)
+    ctrl.iniciar_jogo()
+    carta_na_mao_j1 = ctrl.players[1].mao[0]
+    payload = {"playerId": 1, "carta": _carta_publica(ctrl, carta_na_mao_j1), "origem": "turno"}
+
+    filtrado_para_1 = filtrar_payload_para(ctrl, payload, 1)
+    assert filtrado_para_1["carta"]["nome"] is not None
+    assert not filtrado_para_1["carta"].get("oculto")
+
+    filtrado_para_2 = filtrar_payload_para(ctrl, payload, 2)
+    assert filtrado_para_2["carta"]["oculto"] is True
+    assert filtrado_para_2["carta"]["instanceId"] == carta_na_mao_j1
+    assert "nome" not in filtrado_para_2["carta"]
+    # campos que não são cartas passam direto, sem alteração.
+    assert filtrado_para_2["playerId"] == 1
+    assert filtrado_para_2["origem"] == "turno"
+
+
+def test_filtrar_payload_esconde_carta_em_lista():
+    """topoRevelado e selecaoFeita mandam LISTAS de cartas, não uma só —
+    confere que o mesmo filtro cobre esse formato."""
+    ctrl = GameController(seed=42)
+    ctrl.iniciar_jogo()
+    mao_j1 = ctrl.players[1].mao[:2]
+    payload = {"playerId": 1, "cartas": [_carta_publica(ctrl, c) for c in mao_j1]}
+
+    filtrado_para_2 = filtrar_payload_para(ctrl, payload, 2)
+    assert all(c["oculto"] is True for c in filtrado_para_2["cartas"])
+
+    filtrado_para_1 = filtrar_payload_para(ctrl, payload, 1)
+    assert all(not c.get("oculto") for c in filtrado_para_1["cartas"])
+
+
+def test_filtrar_payload_nao_esconde_carta_ja_fora_de_mao_ou_magia():
+    """Uma carta que já não está mais em mão/magia (ex.: acabou de ser
+    destruída, já está na pilha de descarte) não tem mais "dono
+    escondendo" — vira visível pra qualquer destinatário, igual ao
+    comportamento do JS (descarte é público)."""
+    ctrl = GameController(seed=42)
+    ctrl.iniciar_jogo()
+    from game.components import Location, Zona
+    carta = ctrl.players[1].mao[0]
+    ctrl.players[1].mao.remove(carta)
+    ctrl.world.get_component(carta, Location).zona = Zona.PILHA_DESCARTE
+
+    payload = {"carta": _carta_publica(ctrl, carta), "motivo": "teste"}
+    filtrado_para_2 = filtrar_payload_para(ctrl, payload, 2)
+    assert not filtrado_para_2["carta"].get("oculto")

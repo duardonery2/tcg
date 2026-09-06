@@ -96,17 +96,76 @@ def _descarte_de(ctrl: GameController, player_id: int) -> list[dict]:
     return cartas
 
 
+def _localiza_lado(ctrl: GameController, card: int) -> tuple[int, str] | None:
+    """Onde uma carta está agora (mão de quem, ou slot de magia de quem) —
+    espelha rede.js's localizaLado. Usado só pra decidir visibilidade num
+    payload de EVENTO avulso (estado_completo_para já sabe isso via
+    _mao_filtrada/_magia_filtrada, que iteram a partir da posição, não da
+    carta)."""
+    for pid in ctrl.jogadores:
+        if card in ctrl.players[pid].mao:
+            return pid, "mao"
+        if card in ctrl.board.lado(pid).magia:
+            return pid, "magia"
+    return None
+
+
+def _deve_ocultar_para(ctrl: GameController, valor: dict, destinatario_id: int) -> bool:
+    """Espelha rede.js's deveOcultarPara: recebe um valor de payload já
+    resolvido (um dict de carta, produzido por _carta_publica) e decide se
+    esse destinatário específico pode ver a identidade real dele."""
+    if not isinstance(valor, dict) or "instanceId" not in valor:
+        return False
+    onde = _localiza_lado(ctrl, valor["instanceId"])
+    if onde is None:
+        return False
+    pid, zona = onde
+    if zona == "mao":
+        return pid != destinatario_id
+    if zona == "magia":
+        return valor.get("faceDown", False) and pid != destinatario_id
+    return False
+
+
+def filtrar_payload_para(ctrl: GameController, payload: dict, destinatario_id: int) -> dict:
+    """Espelha rede.js's filtrarPayload: troca qualquer valor de carta no
+    payload de um EVENTO (não do snapshot completo, que já tem seu próprio
+    filtro por posição) por um placeholder oculto, se esse destinatário não
+    deveria ver a identidade real dela. Detecção por FORMATO do valor (é um
+    dict de carta?), não por nome de campo — o mesmo truque do JS, que
+    permite um único filtro genérico cobrir qualquer evento novo sem listar
+    campo por campo."""
+    resultado = {}
+    for chave, valor in payload.items():
+        if isinstance(valor, dict) and _deve_ocultar_para(ctrl, valor, destinatario_id):
+            resultado[chave] = {"oculto": True, "instanceId": valor["instanceId"]}
+        elif isinstance(valor, list):
+            resultado[chave] = [
+                ({"oculto": True, "instanceId": v["instanceId"]} if _deve_ocultar_para(ctrl, v, destinatario_id) else v)
+                if isinstance(v, dict) else v
+                for v in valor
+            ]
+        else:
+            resultado[chave] = valor
+    return resultado
+
+
 def estado_completo_para(ctrl: GameController, destinatario_id: int) -> dict:
     ts = ctrl.fase_atual()
     go = ctrl.fim_de_jogo()
-    oponente_id = ctrl.oponente_de(destinatario_id)
 
     return {
         "turno": ts.numero_turno,
         "jogadorDaVez": ts.jogador_da_vez,
         "fase": ts.fase.name,
         "ultimoDominioAtivadoPor": ctrl.ultimo_dominio_ativado_por,
-        "fimDeJogo": {"perdedorPlayer": go.perdedor_player, "motivo": go.motivo} if go else None,
+        # `perdedor` (não `perdedorPlayer`): nome de campo herdado do
+        # cliente JS existente — webgame/engine.js's checarFimDeJogo monta
+        # `game.fimDeJogo = { perdedor: pid, motivo }`, e ui.js/match.js já
+        # leem `game.fimDeJogo.perdedor` — manter o mesmo nome aqui evita
+        # qualquer tradução extra do lado do cliente quando ele passar a
+        # receber isto de um servidor em vez do host local.
+        "fimDeJogo": {"perdedor": go.perdedor_player, "motivo": go.motivo} if go else None,
         "players": {
             pid: {
                 "nome": ps.nome, "mana": ps.mana, "vida": ps.vida,
@@ -115,6 +174,13 @@ def estado_completo_para(ctrl: GameController, destinatario_id: int) -> dict:
             for pid, ps in ctrl.players.items()
         },
         "board": {
+            # NÃO itera ctrl.board.lados.items() direto: esse dict é
+            # preenchido PREGUIÇOSAMENTE (Board.lado(pid) só cria o
+            # BoardSide na primeira vez que alguém pede aquele lado) — um
+            # jogo recém-criado, antes de qualquer invocação/magia, tem
+            # `lados` VAZIO, e o snapshot mandaria um tabuleiro inteiro
+            # ausente pros dois lados. ctrl.board.lado(pid) força a
+            # criação (idempotente) e sempre devolve algo, mesmo vazio.
             pid: {
                 "playerId": pid,
                 # o Monstro nunca é escondido: só Maldições setadas (via
@@ -124,7 +190,8 @@ def estado_completo_para(ctrl: GameController, destinatario_id: int) -> dict:
                 "monstro": _carta_publica(ctrl, lado.monstro) if lado.monstro is not None else None,
                 "magia": _magia_filtrada(ctrl, pid, destinatario_id),
             }
-            for pid, lado in ctrl.board.lados.items()
+            for pid in ctrl.jogadores
+            for lado in [ctrl.board.lado(pid)]
         },
         # Baralho: nunca manda o conteúdo, nem pro dono — só a contagem,
         # igual engine.js:661-664 (a compra é aleatória/oculta até sair).
